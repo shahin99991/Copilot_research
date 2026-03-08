@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
-MODELS_TOKEN = os.environ.get("GITHUB_MODELS_TOKEN", GITHUB_TOKEN)
+MODELS_TOKEN = os.environ.get("GITHUB_MODELS_TOKEN", "") or os.environ.get("MODELS_TOKEN", GITHUB_TOKEN)
 
 GH_HEADERS = {
     "Authorization": f"Bearer {GITHUB_TOKEN}",
