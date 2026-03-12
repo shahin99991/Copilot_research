@@ -1,7 +1,7 @@
 {
   "vscode_release": "1.111.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-03-06-figma-mcp-server-can-now-generate-design-layers-from-vs-code",
-    "vscode_blog": "https://code.visualstudio.com/updates/v1_111"
+    "github_copilot_changelog": "https://github.blog/changelog/2026-03-11-request-copilot-code-review-from-github-cli",
+    "vscode_blog": "https://code.visualstudio.com/updates/v1_112"
   }
 }
