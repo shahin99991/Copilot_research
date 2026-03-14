@@ -1,7 +1,7 @@
 {
   "vscode_release": "1.111.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-03-12-copilot-auto-model-selection-is-generally-available-in-jetbrains-ides",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-03-13-optionally-skip-approval-for-copilot-coding-agent-actions-workflows",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_112"
   }
 }
