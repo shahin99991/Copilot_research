@@ -1,7 +1,7 @@
 {
   "vscode_release": "1.111.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-03-13-optionally-skip-approval-for-copilot-coding-agent-actions-workflows",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-03-17-copilot-coding-agent-works-faster-with-semantic-code-search",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_112"
   }
 }
