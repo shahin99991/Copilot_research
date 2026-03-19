@@ -1,7 +1,7 @@
 {
-  "vscode_release": "1.111.0",
+  "vscode_release": "1.112.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-03-17-copilot-coding-agent-works-faster-with-semantic-code-search",
-    "vscode_blog": "https://code.visualstudio.com/updates/v1_112"
+    "github_copilot_changelog": "https://github.blog/changelog/2026-03-18-configure-copilot-coding-agents-validation-tools",
+    "vscode_blog": "https://code.visualstudio.com/updates/v1_113"
   }
 }
