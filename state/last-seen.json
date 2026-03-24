@@ -1,7 +1,7 @@
 {
   "vscode_release": "1.112.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-03-20-copilot-usage-metrics-now-resolve-auto-model-selection-to-actual-models",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-03-23-gemini-3-1-pro-is-now-available-in-jetbrains-ides-xcode-and-eclipse",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_113"
   }
 }
