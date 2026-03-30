@@ -26,8 +26,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_MODELS_TOKEN: ${{ secrets.GITHUB_MODELS_TOKEN }}
         run: python scripts/check_updates.py
-      - name: Commit and push if updates found
-        if: steps.check.outputs.has_updates == 'true'
+      - name: Commit and push daily report
+        if: steps.check.outputs.has_report == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

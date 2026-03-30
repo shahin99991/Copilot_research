@@ -229,9 +229,14 @@ def create_update_doc(updates: list[dict], summary: str | None) -> Path:
     filepath = UPDATES_DIR / f"{today}.md"
     UPDATES_DIR.mkdir(parents=True, exist_ok=True)
 
+    diff_count = len(updates)
     lines = [
         f"# GitHub Copilot / VS Code 更新情報 ({today})\n",
         f"> 自動生成: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}\n",
+        "",
+        "## 📌 実行ステータス\n",
+        f"- 差分件数: {diff_count}",
+        f"- 記事化トリガー: {'ON' if diff_count > 0 else 'OFF'}",
         "",
     ]
 
@@ -245,6 +250,13 @@ def create_update_doc(updates: list[dict], summary: str | None) -> Path:
         ]
 
     lines += ["## 📋 検知した更新\n"]
+
+    if not updates:
+        lines += [
+            "- 本日の新規差分はありませんでした。",
+            "- 定期チェックは正常に完了しています。",
+            "",
+        ]
 
     for u in updates:
         if u["type"] == "vscode_release":
@@ -294,19 +306,26 @@ def main():
     feed_updates = check_feeds(state)
     updates.extend(feed_updates)
 
-    if not updates:
-        print("[INFO] No updates found. Nothing to do.")
-        save_state(state)
-        return
-
-    print(f"[INFO] {len(updates)} update(s) found.")
+    if updates:
+        print(f"[INFO] {len(updates)} update(s) found.")
 
     # GitHub Models API で日本語サマリーを生成（トークンがある場合のみ）
-    summary = generate_japanese_summary(updates)
-    if summary:
+    summary = None
+    if updates:
+        summary = generate_japanese_summary(updates)
+    else:
+        summary = (
+            "- 本日の定期実行では、前回チェック以降の新規差分は検知されませんでした。\n"
+            "- 自動収集ワークフローは正常に完了しています。"
+        )
+
+    if summary and updates:
         print("[INFO] Japanese summary generated.")
     else:
-        print("[INFO] Skipped LLM summary (no GITHUB_MODELS_TOKEN).")
+        if updates:
+            print("[INFO] Skipped LLM summary (no GITHUB_MODELS_TOKEN).")
+        else:
+            print("[INFO] No updates found. Daily report will still be generated.")
 
     # Markdown ファイルを生成
     create_update_doc(updates, summary)
@@ -314,11 +333,12 @@ def main():
     # state を保存
     save_state(state)
 
-    # GitHub Actions の後続ステップに「更新あり」フラグを渡す
+    # GitHub Actions の後続ステップに出力フラグを渡す
     output_file = os.environ.get("GITHUB_OUTPUT", "")
     if output_file:
         with open(output_file, "a") as f:
-            f.write("has_updates=true\n")
+            f.write(f"has_updates={'true' if bool(updates) else 'false'}\n")
+            f.write("has_report=true\n")
 
 
 if __name__ == "__main__":
