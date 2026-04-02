@@ -1,7 +1,7 @@
 {
-  "vscode_release": "1.113.0",
+  "vscode_release": "1.114.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-03-31-upcoming-deprecation-of-claude-sonnet-4-in-github-copilot",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-03-31-research-plan-and-code-with-copilot-cloud-agent",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_114"
   }
 }
