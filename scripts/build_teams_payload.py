@@ -665,7 +665,7 @@ def build_daily_card(report: ReportSummary, *, require_ai: bool = False) -> dict
         {"type": "TextBlock", "weight": "Bolder", "text": "変更内容"},
     ]
     for line in detail_lines:
-        body.append({"type": "TextBlock", "wrap": True, "text": line})
+        body.append(styled_text_block(line))
 
     return {
         "$schema": CARD_SCHEMA,
@@ -725,6 +725,36 @@ def build_backfill_lines(
     return lines
 
 
+def styled_text_block(line: str) -> dict[str, Any]:
+    text = line.strip()
+    block: dict[str, Any] = {
+        "type": "TextBlock",
+        "wrap": True,
+        "text": text,
+    }
+
+    if text.startswith("【") and "】" in text:
+        block["weight"] = "Bolder"
+        block["spacing"] = "Medium"
+        return block
+
+    if text.startswith("・"):
+        heading = text[1:].strip()
+        block["text"] = f"• **{heading}**"
+        block["spacing"] = "Small"
+        return block
+
+    for label in ("できるようになったこと", "利用者への影響", "変更の要点"):
+        prefix = f"{label}:"
+        if text.startswith(prefix):
+            value = text.split(":", 1)[1].strip()
+            block["text"] = f"**{label}**: {value}"
+            block["spacing"] = "None"
+            return block
+
+    return block
+
+
 def build_backfill_card(
     reports: list[ReportSummary],
     from_date: str,
@@ -746,7 +776,7 @@ def build_backfill_card(
         {"type": "TextBlock", "weight": "Bolder", "text": "変更内容"},
     ]
     for line in detail_lines:
-        body.append({"type": "TextBlock", "wrap": True, "text": line})
+        body.append(styled_text_block(line))
 
     return {
         "$schema": CARD_SCHEMA,
