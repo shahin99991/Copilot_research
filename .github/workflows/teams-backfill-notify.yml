@@ -26,10 +26,11 @@ jobs:
           FROM_DATE: ${{ github.event.inputs.from_date }}
           TO_DATE: ${{ github.event.inputs.to_date }}
           GITHUB_MODELS_TOKEN: ${{ secrets.GITHUB_MODELS_TOKEN }}
+          MODELS_TOKEN: ${{ secrets.MODELS_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [[ -z "${GITHUB_MODELS_TOKEN:-}" ]]; then
-            echo "GITHUB_MODELS_TOKEN is required for --require-ai"
+          if [[ -z "${GITHUB_MODELS_TOKEN:-}" && -z "${MODELS_TOKEN:-}" ]]; then
+            echo "GITHUB_MODELS_TOKEN or MODELS_TOKEN is required for --require-ai"
             exit 1
           fi
           python scripts/build_teams_payload.py backfill \

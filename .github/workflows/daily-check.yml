@@ -25,10 +25,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_MODELS_TOKEN: ${{ secrets.GITHUB_MODELS_TOKEN }}
+          MODELS_TOKEN: ${{ secrets.MODELS_TOKEN }}
           REQUIRE_AI: 'true'
         run: |
-          if [[ -z "${GITHUB_MODELS_TOKEN:-}" ]]; then
-            echo "GITHUB_MODELS_TOKEN is required when REQUIRE_AI=true"
+          if [[ -z "${GITHUB_MODELS_TOKEN:-}" && -z "${MODELS_TOKEN:-}" ]]; then
+            echo "GITHUB_MODELS_TOKEN or MODELS_TOKEN is required when REQUIRE_AI=true"
             exit 1
           fi
           python scripts/check_updates.py
@@ -44,10 +45,11 @@ jobs:
         if: steps.check.outputs.has_report == 'true'
         env:
           GITHUB_MODELS_TOKEN: ${{ secrets.GITHUB_MODELS_TOKEN }}
+          MODELS_TOKEN: ${{ secrets.MODELS_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [[ -z "${GITHUB_MODELS_TOKEN:-}" ]]; then
-            echo "GITHUB_MODELS_TOKEN is required for --require-ai"
+          if [[ -z "${GITHUB_MODELS_TOKEN:-}" && -z "${MODELS_TOKEN:-}" ]]; then
+            echo "GITHUB_MODELS_TOKEN or MODELS_TOKEN is required for --require-ai"
             exit 1
           fi
           latest_file=$(ls -1 docs/updates/*.md | sort | tail -n 1)
