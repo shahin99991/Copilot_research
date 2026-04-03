@@ -38,11 +38,8 @@ jobs:
         if: steps.check.outputs.has_report == 'true'
         run: |
           latest_file=$(ls -1 docs/updates/*.md | sort | tail -n 1)
-          latest_name=$(basename "$latest_file")
-          report_url="https://github.com/${{ github.repository }}/blob/main/docs/updates/${latest_name}"
           python scripts/build_teams_payload.py daily \
             --report-file "$latest_file" \
-            --report-url "$report_url" \
             --output teams-payload.json
       - name: Notify Teams (daily report)
         if: steps.check.outputs.has_report == 'true'

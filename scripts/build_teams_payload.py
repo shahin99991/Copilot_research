@@ -158,32 +158,23 @@ def build_daily_change_lines(report: ReportSummary, max_items: int = 6) -> list[
     for item in report.updates[:max_items]:
         title = item.get("title", "（タイトルなし）")
         source = item.get("source", "")
-        url = item.get("url", "")
 
         if source:
             sentence = f"- {source}で「{title}」が公開されました。"
         else:
             sentence = f"- 「{title}」が公開されました。"
 
-        if url:
-            sentence += f" URL: {url}"
-
         lines.append(sentence)
 
     if not lines:
-        return ["- 変更内容の抽出に失敗しました。レポートURLを確認してください。"]
+        return ["- 変更内容の抽出に失敗しました。次回の自動収集で再試行します。"]
 
     return lines
 
 
-def build_daily_card(report: ReportSummary, report_url: str) -> dict:
+def build_daily_card(report: ReportSummary) -> dict:
     status = "更新あり" if report.diff_count > 0 else "差分なし"
-    summary = (
-        f"ステータス: {status}\n"
-        f"差分件数: {report.diff_count}\n"
-        f"レポート: {report.file_name}\n"
-        f"URL: {report_url}"
-    )
+    summary = f"ステータス: {status}\n差分件数: {report.diff_count}"
     details = "\n".join(build_daily_change_lines(report))
 
     return {
@@ -212,19 +203,12 @@ def list_reports_between(updates_dir: Path, from_date: str, to_date: str) -> lis
     return matched
 
 
-def build_backfill_lines(reports: list[ReportSummary], repo: str) -> list[str]:
+def build_backfill_lines(reports: list[ReportSummary]) -> list[str]:
     lines: list[str] = []
 
     for report in reports:
-        report_url = (
-            f"https://github.com/{repo}/blob/main/docs/updates/{report.date_name}.md"
-            if repo
-            else f"docs/updates/{report.date_name}.md"
-        )
-
         if report.diff_count == 0:
             lines.append(f"- {report.date_name} は差分 0 件でした。更新はありません。")
-            lines.append(f"  レポート: {report_url}")
             continue
 
         ai_lines = normalize_bullets(report.ai_summary_lines, max_items=2)
@@ -235,7 +219,6 @@ def build_backfill_lines(reports: list[ReportSummary], repo: str) -> list[str]:
             )
             if len(ai_lines) > 1:
                 lines.append(f"  補足: {ai_lines[1][2:].strip()}")
-            lines.append(f"  レポート: {report_url}")
             continue
 
         titles = [u.get("title", "") for u in report.updates if u.get("title")]
@@ -246,10 +229,8 @@ def build_backfill_lines(reports: list[ReportSummary], repo: str) -> list[str]:
             )
         else:
             lines.append(
-                f"- {report.date_name} は差分 {report.diff_count} 件。詳細はレポートを参照してください。"
+                f"- {report.date_name} は差分 {report.diff_count} 件。主な変更の抽出に失敗しました。"
             )
-
-        lines.append(f"  レポート: {report_url}")
 
     if not lines:
         lines = ["- 対象期間のレポートファイルは見つかりませんでした。"]
@@ -261,10 +242,9 @@ def build_backfill_card(
     reports: list[ReportSummary],
     from_date: str,
     to_date: str,
-    repo: str,
 ) -> dict:
-    summary = f"期間: {from_date} 〜 {to_date}\nレポート数: {len(reports)}"
-    details = "\n".join(build_backfill_lines(reports, repo))
+    summary = f"期間: {from_date} 〜 {to_date}\n対象日数: {len(reports)}"
+    details = "\n".join(build_backfill_lines(reports))
 
     return {
         "$schema": CARD_SCHEMA,
@@ -286,8 +266,7 @@ def build_backfill_card(
 def cmd_daily(args: argparse.Namespace) -> None:
     report_file = Path(args.report_file)
     report = read_report(report_file)
-    report_url = args.report_url
-    card = build_daily_card(report, report_url)
+    card = build_daily_card(report)
     Path(args.output).write_text(json.dumps(card, ensure_ascii=False), encoding="utf-8")
 
 
@@ -295,8 +274,7 @@ def cmd_backfill(args: argparse.Namespace) -> None:
     updates_dir = Path(args.updates_dir)
     files = list_reports_between(updates_dir, args.from_date, args.to_date)
     reports = [read_report(path) for path in files]
-    repo = args.repo or os.environ.get("GITHUB_REPOSITORY", "")
-    card = build_backfill_card(reports, args.from_date, args.to_date, repo)
+    card = build_backfill_card(reports, args.from_date, args.to_date)
     Path(args.output).write_text(json.dumps(card, ensure_ascii=False), encoding="utf-8")
 
 
@@ -306,7 +284,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     daily = sub.add_parser("daily", help="Build payload for daily report notification")
     daily.add_argument("--report-file", required=True, help="Path to daily report markdown")
-    daily.add_argument("--report-url", required=True, help="GitHub URL of daily report")
     daily.add_argument("--output", required=True, help="Output JSON file path")
     daily.set_defaults(func=cmd_daily)
 
@@ -318,7 +295,6 @@ def build_parser() -> argparse.ArgumentParser:
         default="docs/updates",
         help="Directory containing daily report markdown files",
     )
-    backfill.add_argument("--repo", default="", help="GitHub repository owner/name")
     backfill.add_argument("--output", required=True, help="Output JSON file path")
     backfill.set_defaults(func=cmd_backfill)
 
