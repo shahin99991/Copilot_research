@@ -386,6 +386,8 @@ def build_insight_payload(input_items: list[dict[str, str]], single_mode: bool =
                     "- impact: 誰にどんな影響があるか(最大80文字)\n"
                     "- point: 補足要点(最大100文字、任意)\n"
                     "- すべて日本語で出力\n"
+                    "- 主要な製品用語は英語表記を残してよい"
+                    " (例: Research / Plan / Code, cloud agent, Auto model selection, native session logs)\n"
                     "- URLは含めない\n"
                     f"updates={json.dumps(input_items, ensure_ascii=False)}"
                 ),
@@ -490,13 +492,13 @@ def infer_title_ja(title: str, detail: str) -> str:
 
     corpus = f"{title} {detail}".lower()
     if "cloud agent" in corpus and "research, plan, and code" in corpus:
-        return "Copilot cloud agentの拡張"
+        return "Copilot cloud agent (Research / Plan / Code) の拡張"
     if "student" in corpus and "now available" in corpus:
-        return "Copilot Student向け新モデル提供"
+        return "Copilot Student向け GPT-5.4 mini 提供"
     if "github mobile" in corpus and "session logs" in corpus:
-        return "GitHub MobileのCopilotタブ刷新"
+        return "GitHub Mobile の Copilot tab / native session logs 改善"
     if "github mobile" in corpus and "agent assignment" in corpus:
-        return "GitHub Mobileのエージェント割り当て改善"
+        return "GitHub Mobile の Assign an Agent 改善"
     if ("vscode" in corpus or "vs code" in corpus) and (
         "release" in corpus or "リリース" in corpus
     ):
@@ -508,18 +510,18 @@ def infer_capability(title: str, detail: str) -> str:
     corpus = f"{title} {detail}".lower()
 
     if "cloud agent" in corpus and "research, plan, and code" in corpus:
-        return "Copilot cloud agentで調査・計画・実装までを広い場面で進められるようになりました。"
+        return "Copilot cloud agentで Research / Plan / Code を広い場面で進められるようになりました。"
     if "no longer limited to pull-request workflows" in corpus:
-        return "Pull Request以外のワークフローでもエージェントを使えるようになりました。"
+        return "Pull Request workflows 以外でも cloud agent を使えるようになりました。"
     if "is now available" in corpus or "now available" in corpus:
         feature = re.split(r"(?i)\s+is now available|\s+now available", title)[0].strip()
         if feature:
             return f"{feature} が利用可能になりました。"
         return "新機能が利用可能になりました。"
     if "agent assignment" in corpus and "issue" in corpus:
-        return "Issue画面からエージェントを素早く割り当てられるようになりました。"
+        return "Issue 画面から Assign an Agent を素早く実行できるようになりました。"
     if "refreshed copilot tab" in corpus or "native session logs" in corpus:
-        return "GitHub MobileでCopilotタブとセッションログが使いやすくなりました。"
+        return "GitHub Mobileで Copilot tab / native session logs が使いやすくなりました。"
     if ("vscode" in corpus or "vs code" in corpus) and (
         "release" in corpus or "リリース" in corpus
     ):
@@ -539,12 +541,34 @@ def infer_impact(title: str, detail: str, source: str) -> str:
     if "student" in corpus or "education" in corpus:
         return "学習ユーザーが新しいモデルや機能を使って学習を進めやすくなります。"
     if "mobile" in corpus:
-        return "外出先でもエージェント運用や作業継続がしやすくなります。"
+        return "外出先でも agent 作業の継続や進捗確認がしやすくなります。"
     if "cloud agent" in corpus or "agent" in corpus:
         return "実装作業の自動化範囲が広がり、開発スピード向上が見込めます。"
     if "vscode" in corpus or "vs code" in corpus:
         return "開発環境を最新化することで日常開発の安定性と効率が向上します。"
     return "利用者の作業効率や使いやすさに良い影響があります。"
+
+
+def retain_key_terms(text: str, title: str, detail: str) -> str:
+    base = compact_text(text, max_len=120)
+    corpus = f"{title} {detail}".lower()
+
+    # Keep official wording for cloud agent update.
+    if "cloud agent" in corpus and "research, plan, and code" in corpus:
+        if "research" not in base.lower() and "plan" not in base.lower() and "code" not in base.lower():
+            base = base.rstrip("。") + " (Research / Plan / Code)"
+
+    # Keep official wording for student auto model selection update.
+    if "auto model selection" in corpus and "gpt-5.4 mini" in corpus:
+        if "auto model selection" not in base.lower():
+            base = base.rstrip("。") + " (Auto model selection)"
+
+    # Keep official wording for mobile session logs update.
+    if "native session logs" in corpus:
+        if "native session logs" not in base.lower():
+            base = base.rstrip("。") + " (native session logs)"
+
+    return base
 
 
 def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | None = None) -> list[str]:
@@ -574,9 +598,12 @@ def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | Non
         ai_point = compact_text(ai_insight.get("point", ""), max_len=110)
 
     if ai_capability:
+        ai_capability = retain_key_terms(ai_capability, title, detail)
+
+    if ai_capability:
         lines.append(f"できるようになったこと: {ai_capability}")
     else:
-        lines.append(f"できるようになったこと: {infer_capability(title, detail)}")
+        lines.append(f"できるようになったこと: {retain_key_terms(infer_capability(title, detail), title, detail)}")
 
     if ai_impact:
         lines.append(f"利用者への影響: {ai_impact}")
