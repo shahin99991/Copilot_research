@@ -1,0 +1,88 @@
+name: Teams Backfill Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      from_date:
+        description: "Start date (YYYY-MM-DD)"
+        required: true
+        default: "2026-03-01"
+      to_date:
+        description: "End date (YYYY-MM-DD)"
+        required: true
+        default: "2026-04-30"
+
+permissions:
+  contents: read
+
+jobs:
+  notify-backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Teams payload
+        env:
+          FROM_DATE: ${{ github.event.inputs.from_date }}
+          TO_DATE: ${{ github.event.inputs.to_date }}
+        run: |
+          mapfile -t files < <(
+            ls -1 docs/updates/*.md | sort | awk -v from="$FROM_DATE" -v to="$TO_DATE" '
+              {
+                file=$0
+                n=$0
+                sub(/^.*\//, "", n)
+                sub(/\.md$/, "", n)
+                if (n >= from && n <= to) print file
+              }
+            '
+          )
+
+          if [[ ${#files[@]} -eq 0 ]]; then
+            SUMMARY_LINES="- 対象期間のレポートファイルは見つかりませんでした。"
+            REPORT_COUNT=0
+          else
+            SUMMARY_LINES=""
+            REPORT_COUNT=${#files[@]}
+            for f in "${files[@]}"; do
+              date_name=$(basename "$f" .md)
+              diff_count=$(grep -E "^- 差分件数:" "$f" | sed -E 's/^- 差分件数:[[:space:]]*//' || true)
+              if [[ -z "$diff_count" ]]; then
+                diff_count=$(grep -c "^- \*\*URL\*\*:" "$f" || true)
+              fi
+              report_url="https://github.com/${{ github.repository }}/blob/main/docs/updates/${date_name}.md"
+              SUMMARY_LINES+="- ${date_name}: 差分 ${diff_count} 件 (${report_url})"$'\n'
+            done
+          fi
+
+          SUMMARY_LINES="$SUMMARY_LINES" FROM_DATE="$FROM_DATE" TO_DATE="$TO_DATE" REPORT_COUNT="$REPORT_COUNT" python - <<'PY' > teams-backfill-payload.json
+import json
+import os
+
+text = (
+    "Copilot / VS Code 期間サマリー通知\n"
+    f"- 期間: {os.getenv('FROM_DATE')} 〜 {os.getenv('TO_DATE')}\n"
+    f"- レポート数: {os.getenv('REPORT_COUNT')}\n"
+    "一覧:\n"
+    f"{os.getenv('SUMMARY_LINES', '').rstrip()}"
+)
+print(json.dumps({"text": text}, ensure_ascii=False))
+PY
+
+      - name: Notify Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          if [[ -z "${TEAMS_WEBHOOK_URL:-}" ]]; then
+            echo "TEAMS_WEBHOOK_URL is not set."
+            exit 1
+          fi
+
+          http_code=$(curl -sS -o /tmp/teams_response.txt -w "%{http_code}" -X POST -H "Content-Type: application/json" --data @teams-backfill-payload.json "$TEAMS_WEBHOOK_URL")
+          if (( http_code < 200 || http_code >= 300 )); then
+            echo "Teams webhook failed (HTTP ${http_code})"
+            cat /tmp/teams_response.txt || true
+            exit 1
+          fi
+
+          echo "Teams webhook accepted (HTTP ${http_code})"

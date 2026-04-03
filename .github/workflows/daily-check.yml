@@ -57,4 +57,10 @@ jobs:
             echo "TEAMS_WEBHOOK_URL is not set. Skip Teams notification."
             exit 0
           fi
-          curl -sS -X POST -H "Content-Type: application/json" --data @teams-payload.json "$TEAMS_WEBHOOK_URL"
+          http_code=$(curl -sS -o /tmp/teams_response.txt -w "%{http_code}" -X POST -H "Content-Type: application/json" --data @teams-payload.json "$TEAMS_WEBHOOK_URL")
+          if (( http_code < 200 || http_code >= 300 )); then
+            echo "Teams webhook failed (HTTP ${http_code})"
+            cat /tmp/teams_response.txt || true
+            exit 1
+          fi
+          echo "Teams webhook accepted (HTTP ${http_code})"
