@@ -32,7 +32,6 @@ jobs:
             --from-date "$FROM_DATE" \
             --to-date "$TO_DATE" \
             --updates-dir docs/updates \
-            --require-ai \
             --output teams-backfill-payload.json
 
       - name: Notify Teams

@@ -471,6 +471,26 @@ def summarize_detail_text(text: str, max_len: int = 120) -> str:
     return normalized
 
 
+def infer_title_ja(title: str, detail: str) -> str:
+    if has_japanese(title):
+        return title
+
+    corpus = f"{title} {detail}".lower()
+    if "cloud agent" in corpus and "research, plan, and code" in corpus:
+        return "Copilot cloud agentの拡張"
+    if "student" in corpus and "now available" in corpus:
+        return "Copilot Student向け新モデル提供"
+    if "github mobile" in corpus and "session logs" in corpus:
+        return "GitHub MobileのCopilotタブ刷新"
+    if "github mobile" in corpus and "agent assignment" in corpus:
+        return "GitHub Mobileのエージェント割り当て改善"
+    if ("vscode" in corpus or "vs code" in corpus) and (
+        "release" in corpus or "リリース" in corpus
+    ):
+        return "VS Code 新バージョン公開"
+    return "主要な機能更新"
+
+
 def infer_capability(title: str, detail: str) -> str:
     corpus = f"{title} {detail}".lower()
 
@@ -520,7 +540,7 @@ def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | Non
     detail = update.get("detail", "").strip()
 
     ai_title = ""
-    heading_title = title
+    heading_title = infer_title_ja(title, detail)
     if ai_insight:
         ai_title = compact_text(ai_insight.get("title_ja", ""), max_len=60)
         if ai_title and has_japanese(ai_title):
@@ -553,7 +573,7 @@ def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | Non
     summary = summarize_detail_text(detail)
     if ai_point:
         lines.append(f"  変更の要点: {ai_point}")
-    elif summary and ai_insight is None:
+    elif summary and ai_insight is None and has_japanese(summary):
         lines.append(f"  変更の要点: {summary}")
 
     return lines
