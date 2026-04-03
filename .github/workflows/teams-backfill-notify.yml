@@ -55,19 +55,8 @@ jobs:
             done
           fi
 
-          SUMMARY_LINES="$SUMMARY_LINES" FROM_DATE="$FROM_DATE" TO_DATE="$TO_DATE" REPORT_COUNT="$REPORT_COUNT" python - <<'PY' > teams-backfill-payload.json
-import json
-import os
-
-text = (
-    "Copilot / VS Code 期間サマリー通知\n"
-    f"- 期間: {os.getenv('FROM_DATE')} 〜 {os.getenv('TO_DATE')}\n"
-    f"- レポート数: {os.getenv('REPORT_COUNT')}\n"
-    "一覧:\n"
-    f"{os.getenv('SUMMARY_LINES', '').rstrip()}"
-)
-print(json.dumps({"text": text}, ensure_ascii=False))
-PY
+            SUMMARY_LINES="$SUMMARY_LINES" FROM_DATE="$FROM_DATE" TO_DATE="$TO_DATE" REPORT_COUNT="$REPORT_COUNT" \
+            python -c "import json, os; text=('Copilot / VS Code 期間サマリー通知\\n' + f\"- 期間: {os.getenv('FROM_DATE')} 〜 {os.getenv('TO_DATE')}\\n\" + f\"- レポート数: {os.getenv('REPORT_COUNT')}\\n\" + '一覧:\\n' + os.getenv('SUMMARY_LINES', '').rstrip()); print(json.dumps({'text': text}, ensure_ascii=False))" > teams-backfill-payload.json
 
       - name: Notify Teams
         env:
