@@ -216,6 +216,19 @@ def normalize_bullets(lines: list[str], max_items: int) -> list[str]:
     return normalized
 
 
+def to_plain_bullets(lines: list[str]) -> list[str]:
+    out: list[str] = []
+    for line in lines:
+        text = line.strip()
+        if not text:
+            continue
+        if text.startswith("- "):
+            out.append("・" + text[2:])
+        else:
+            out.append("・" + text)
+    return out
+
+
 def compact_text(text: str, max_len: int = 140) -> str:
     value = re.sub(r"\s+", " ", text or "").strip()
     if len(value) > max_len:
@@ -546,9 +559,9 @@ def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | Non
         if ai_title and has_japanese(ai_title):
             heading_title = ai_title
 
-    heading = f"- {heading_title}"
+    heading = f"・{heading_title}"
     if source:
-        heading = f"- {heading_title} ({source})"
+        heading = f"・{heading_title} ({source})"
 
     lines = [heading]
 
@@ -561,20 +574,20 @@ def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | Non
         ai_point = compact_text(ai_insight.get("point", ""), max_len=110)
 
     if ai_capability:
-        lines.append(f"  できるようになったこと: {ai_capability}")
+        lines.append(f"できるようになったこと: {ai_capability}")
     else:
-        lines.append(f"  できるようになったこと: {infer_capability(title, detail)}")
+        lines.append(f"できるようになったこと: {infer_capability(title, detail)}")
 
     if ai_impact:
-        lines.append(f"  利用者への影響: {ai_impact}")
+        lines.append(f"利用者への影響: {ai_impact}")
     else:
-        lines.append(f"  利用者への影響: {infer_impact(title, detail, source)}")
+        lines.append(f"利用者への影響: {infer_impact(title, detail, source)}")
 
     summary = summarize_detail_text(detail)
     if ai_point:
-        lines.append(f"  変更の要点: {ai_point}")
+        lines.append(f"変更の要点: {ai_point}")
     elif summary and ai_insight is None and has_japanese(summary):
-        lines.append(f"  変更の要点: {summary}")
+        lines.append(f"変更の要点: {summary}")
 
     return lines
 
@@ -586,7 +599,7 @@ def build_daily_change_lines(
     require_ai: bool = False,
 ) -> list[str]:
     if report.diff_count == 0:
-        return ["- 本日の更新差分はありませんでした。"]
+        return ["・本日の更新差分はありませんでした。"]
 
     lines: list[str] = []
     day_updates = report.updates[:max_items]
@@ -604,30 +617,34 @@ def build_daily_change_lines(
 
     ai_lines = normalize_bullets(report.ai_summary_lines, max_items=max_items)
     if ai_lines:
-        return ai_lines
+        return to_plain_bullets(ai_lines)
 
-    return ["- 変更内容の抽出に失敗しました。次回の自動収集で再試行します。"]
+    return ["・変更内容の抽出に失敗しました。次回の自動収集で再試行します。"]
 
 
 def build_daily_card(report: ReportSummary, *, require_ai: bool = False) -> dict:
     status = "更新あり" if report.diff_count > 0 else "差分なし"
     summary = f"ステータス: {status}\n差分件数: {report.diff_count}"
-    details = "\n".join(build_daily_change_lines(report, require_ai=require_ai))
+    detail_lines = build_daily_change_lines(report, require_ai=require_ai)
+
+    body = [
+        {
+            "type": "TextBlock",
+            "size": "Medium",
+            "weight": "Bolder",
+            "text": "Copilot / VS Code 定期チェック結果",
+        },
+        {"type": "TextBlock", "wrap": True, "text": summary},
+        {"type": "TextBlock", "weight": "Bolder", "text": "変更内容"},
+    ]
+    for line in detail_lines:
+        body.append({"type": "TextBlock", "wrap": True, "text": line})
 
     return {
         "$schema": CARD_SCHEMA,
         "type": "AdaptiveCard",
         "version": "1.4",
-        "body": [
-            {
-                "type": "TextBlock",
-                "size": "Medium",
-                "weight": "Bolder",
-                "text": "Copilot / VS Code 定期チェック結果",
-            },
-            {"type": "TextBlock", "wrap": True, "text": summary},
-            {"type": "TextBlock", "wrap": True, "text": "変更内容:\n" + details},
-        ],
+        "body": body,
     }
 
 
@@ -650,10 +667,10 @@ def build_backfill_lines(
 
     for report in reports:
         if report.diff_count == 0:
-            lines.append(f"- {report.date_name} は差分 0 件でした。更新はありません。")
+            lines.append(f"【{report.date_name}】差分 0 件。更新はありません。")
             continue
 
-        lines.append(f"- {report.date_name} は差分 {report.diff_count} 件です。")
+        lines.append(f"【{report.date_name}】差分 {report.diff_count} 件")
 
         if report.updates:
             day_updates = report.updates[:max_items_per_day]
@@ -666,28 +683,22 @@ def build_backfill_lines(
                 )
             for idx, update in enumerate(day_updates):
                 formatted = format_update_lines(update, ai_insight=ai_insights.get(idx))
-                for line_idx, line in enumerate(formatted):
-                    if line_idx == 0:
-                        lines.append("  ・" + line[2:])
-                    else:
-                        lines.append("    " + line.strip())
+                lines.extend(formatted)
 
             remaining = report.diff_count - len(day_updates)
             if remaining > 0:
-                lines.append(f"  ・ほか {remaining} 件の更新があります。")
+                lines.append(f"・ほか {remaining} 件の更新があります。")
             continue
 
         ai_lines = normalize_bullets(report.ai_summary_lines, max_items=2)
         if ai_lines:
-            for bullet in ai_lines:
-                text = bullet[2:].strip() if bullet.startswith("- ") else bullet
-                lines.append(f"  ・{text}")
+            lines.extend(to_plain_bullets(ai_lines))
             continue
 
-        lines.append("  ・主な変更の抽出に失敗しました。")
+        lines.append("・主な変更の抽出に失敗しました。")
 
     if not lines:
-        lines = ["- 対象期間のレポートファイルは見つかりませんでした。"]
+        lines = ["・対象期間のレポートファイルは見つかりませんでした。"]
 
     return lines
 
@@ -700,22 +711,26 @@ def build_backfill_card(
     require_ai: bool = False,
 ) -> dict:
     summary = f"期間: {from_date} 〜 {to_date}\n対象日数: {len(reports)}"
-    details = "\n".join(build_backfill_lines(reports, require_ai=require_ai))
+    detail_lines = build_backfill_lines(reports, require_ai=require_ai)
+
+    body = [
+        {
+            "type": "TextBlock",
+            "size": "Medium",
+            "weight": "Bolder",
+            "text": "Copilot / VS Code 期間サマリー通知",
+        },
+        {"type": "TextBlock", "wrap": True, "text": summary},
+        {"type": "TextBlock", "weight": "Bolder", "text": "変更内容"},
+    ]
+    for line in detail_lines:
+        body.append({"type": "TextBlock", "wrap": True, "text": line})
 
     return {
         "$schema": CARD_SCHEMA,
         "type": "AdaptiveCard",
         "version": "1.4",
-        "body": [
-            {
-                "type": "TextBlock",
-                "size": "Medium",
-                "weight": "Bolder",
-                "text": "Copilot / VS Code 期間サマリー通知",
-            },
-            {"type": "TextBlock", "wrap": True, "text": summary},
-            {"type": "TextBlock", "wrap": True, "text": "変更内容:\n" + details},
-        ],
+        "body": body,
     }
 
 
