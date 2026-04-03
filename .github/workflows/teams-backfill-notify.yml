@@ -28,10 +28,15 @@ jobs:
           GITHUB_MODELS_TOKEN: ${{ secrets.GITHUB_MODELS_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          if [[ -z "${GITHUB_MODELS_TOKEN:-}" ]]; then
+            echo "GITHUB_MODELS_TOKEN is required for --require-ai"
+            exit 1
+          fi
           python scripts/build_teams_payload.py backfill \
             --from-date "$FROM_DATE" \
             --to-date "$TO_DATE" \
             --updates-dir docs/updates \
+            --require-ai \
             --output teams-backfill-payload.json
 
       - name: Notify Teams

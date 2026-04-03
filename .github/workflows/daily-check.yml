@@ -25,7 +25,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_MODELS_TOKEN: ${{ secrets.GITHUB_MODELS_TOKEN }}
-        run: python scripts/check_updates.py
+          REQUIRE_AI: 'true'
+        run: |
+          if [[ -z "${GITHUB_MODELS_TOKEN:-}" ]]; then
+            echo "GITHUB_MODELS_TOKEN is required when REQUIRE_AI=true"
+            exit 1
+          fi
+          python scripts/check_updates.py
       - name: Commit and push daily report
         if: steps.check.outputs.has_report == 'true'
         run: |
@@ -40,9 +46,14 @@ jobs:
           GITHUB_MODELS_TOKEN: ${{ secrets.GITHUB_MODELS_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          if [[ -z "${GITHUB_MODELS_TOKEN:-}" ]]; then
+            echo "GITHUB_MODELS_TOKEN is required for --require-ai"
+            exit 1
+          fi
           latest_file=$(ls -1 docs/updates/*.md | sort | tail -n 1)
           python scripts/build_teams_payload.py daily \
             --report-file "$latest_file" \
+            --require-ai \
             --output teams-payload.json
       - name: Notify Teams (daily report)
         if: steps.check.outputs.has_report == 'true'

@@ -411,12 +411,17 @@ def build_insight_payload(input_items: list[dict[str, str]], single_mode: bool =
 def call_models_for_update_insights(
     updates: list[dict[str, str]],
     *,
+    require_ai: bool = False,
     retries: int = 2,
 ) -> dict[int, dict[str, str]]:
     token = get_models_token()
-    if not token or not updates:
-        if not token and updates:
-            print("[INFO] AI insights skipped: no model token.")
+    if not updates:
+        return {}
+
+    if not token:
+        if require_ai:
+            raise RuntimeError("AI is required but GITHUB_MODELS_TOKEN/MODELS_TOKEN is not set.")
+        print("[INFO] AI insights skipped: no model token.")
         return {}
 
     input_items = []
@@ -471,6 +476,11 @@ def call_models_for_update_insights(
             result[idx] = parsed_single
 
     print(f"[INFO] AI insights coverage: {len(result)}/{len(updates)}")
+    if require_ai and len(result) < len(updates):
+        missing = [str(i + 1) for i in range(len(updates)) if i not in result]
+        raise RuntimeError(
+            "AI insight generation incomplete for update index: " + ",".join(missing)
+        )
     return result
 
 
@@ -665,7 +675,7 @@ def build_daily_change_lines(
 
     lines: list[str] = []
     day_updates = report.updates[:max_items]
-    ai_insights = call_models_for_update_insights(day_updates)
+    ai_insights = call_models_for_update_insights(day_updates, require_ai=require_ai)
     if require_ai and len(ai_insights) < len(day_updates):
         missing = [str(i + 1) for i in range(len(day_updates)) if i not in ai_insights]
         raise RuntimeError(
@@ -735,7 +745,7 @@ def build_backfill_lines(
 
         if report.updates:
             day_updates = report.updates
-            ai_insights = call_models_for_update_insights(day_updates)
+            ai_insights = call_models_for_update_insights(day_updates, require_ai=require_ai)
             if require_ai and len(ai_insights) < len(day_updates):
                 missing = [str(i + 1) for i in range(len(day_updates)) if i not in ai_insights]
                 raise RuntimeError(

@@ -122,6 +122,10 @@ def save_state(state: dict) -> None:
     )
 
 
+def is_truthy(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 # ─────────────────────────────────────────────
 # 更新チェック
 # ─────────────────────────────────────────────
@@ -400,6 +404,14 @@ def create_update_doc(updates: list[dict], summary: str | None) -> Path:
 # ─────────────────────────────────────────────
 
 def main():
+    require_ai = is_truthy(os.environ.get("REQUIRE_AI", ""))
+    if require_ai and not MODELS_TOKEN:
+        print(
+            "[ERROR] REQUIRE_AI is enabled but GITHUB_MODELS_TOKEN/MODELS_TOKEN is not set.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     state = load_state()
     updates: list[dict] = []
 
@@ -419,6 +431,12 @@ def main():
     summary = None
     if updates:
         summary = generate_japanese_summary(updates)
+        if require_ai and not summary:
+            print(
+                "[ERROR] REQUIRE_AI is enabled but AI summary generation failed.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
     else:
         summary = (
             "- 本日の定期実行では、前回チェック以降の新規差分は検知されませんでした。\n"
