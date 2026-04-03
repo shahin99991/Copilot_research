@@ -56,7 +56,7 @@ jobs:
           fi
 
             SUMMARY_LINES="$SUMMARY_LINES" FROM_DATE="$FROM_DATE" TO_DATE="$TO_DATE" REPORT_COUNT="$REPORT_COUNT" \
-            python -c "import json, os; text=('Copilot / VS Code 期間サマリー通知\\n' + f\"- 期間: {os.getenv('FROM_DATE')} 〜 {os.getenv('TO_DATE')}\\n\" + f\"- レポート数: {os.getenv('REPORT_COUNT')}\\n\" + '一覧:\\n' + os.getenv('SUMMARY_LINES', '').rstrip()); print(json.dumps({'text': text}, ensure_ascii=False))" > teams-backfill-payload.json
+            python -c "import json, os; summary=(f'期間: {os.getenv(\"FROM_DATE\",\"\")} 〜 {os.getenv(\"TO_DATE\",\"\")}\\nレポート数: {os.getenv(\"REPORT_COUNT\",\"0\")}'); details=os.getenv('SUMMARY_LINES','').rstrip() or '- 対象期間のレポートファイルは見つかりませんでした。'; card={'$schema':'http://adaptivecards.io/schemas/adaptive-card.json','type':'AdaptiveCard','version':'1.4','body':[{'type':'TextBlock','size':'Medium','weight':'Bolder','text':'Copilot / VS Code 期間サマリー通知'},{'type':'TextBlock','wrap':True,'text':summary},{'type':'TextBlock','wrap':True,'text':'一覧:\\n'+details}]}; print(json.dumps(card, ensure_ascii=False))" > teams-backfill-payload.json
 
       - name: Notify Teams
         env:
