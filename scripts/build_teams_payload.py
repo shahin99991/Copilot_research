@@ -6,12 +6,18 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import os
 import re
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 
 CARD_SCHEMA = "http://adaptivecards.io/schemas/adaptive-card.json"
+MODELS_ENDPOINT = "https://models.inference.ai.azure.com/chat/completions"
+MODELS_DEFAULT = "gpt-4o-mini"
 
 
 @dataclass
@@ -209,6 +215,163 @@ def normalize_bullets(lines: list[str], max_items: int) -> list[str]:
     return normalized
 
 
+def compact_text(text: str, max_len: int = 140) -> str:
+    value = re.sub(r"\s+", " ", text or "").strip()
+    if len(value) > max_len:
+        return value[: max_len - 1].rstrip() + "…"
+    return value
+
+
+def get_models_token() -> str:
+    token = (
+        os.getenv("GITHUB_MODELS_TOKEN", "").strip()
+        or os.getenv("MODELS_TOKEN", "").strip()
+        or os.getenv("GITHUB_TOKEN", "").strip()
+    )
+    return token
+
+
+def extract_json_object(text: str) -> dict[str, Any] | None:
+    candidate = text.strip()
+
+    # Try direct parse first.
+    try:
+        parsed = json.loads(candidate)
+        if isinstance(parsed, dict):
+            return parsed
+    except Exception:
+        pass
+
+    # If wrapped in markdown code fences, strip and retry.
+    if candidate.startswith("```"):
+        candidate = re.sub(r"^```[a-zA-Z0-9_-]*\s*", "", candidate)
+        candidate = re.sub(r"\s*```$", "", candidate)
+        candidate = candidate.strip()
+        try:
+            parsed = json.loads(candidate)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
+
+    # Fallback: parse first JSON object region.
+    start = candidate.find("{")
+    end = candidate.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        region = candidate[start : end + 1]
+        try:
+            parsed = json.loads(region)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            return None
+
+    return None
+
+
+def call_models_for_update_insights(updates: list[dict[str, str]]) -> dict[int, dict[str, str]]:
+    token = get_models_token()
+    if not token or not updates:
+        return {}
+
+    input_items = []
+    for idx, update in enumerate(updates):
+        input_items.append(
+            {
+                "index": idx,
+                "title": compact_text(update.get("title", ""), max_len=180),
+                "source": compact_text(update.get("source", ""), max_len=80),
+                "detail": compact_text(update.get("detail", ""), max_len=500),
+            }
+        )
+
+    payload = {
+        "model": os.getenv("GITHUB_MODELS_MODEL", MODELS_DEFAULT),
+        "temperature": 0.2,
+        "max_tokens": 1400,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "あなたはGitHub CopilotとVS Code更新を日本語で要約する技術ライターです。"
+                    "入力ごとに『何ができるようになったか』と『利用者への影響』を短く具体的に書いてください。"
+                    "不明な点は断定せず、控えめに表現してください。"
+                    "必ずJSONのみを返してください。"
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    "次のupdates配列を読んで、各indexについて日本語の説明を作成してください。\n"
+                    "出力形式は次のJSONだけにしてください:\n"
+                    "{\"items\":[{\"index\":0,\"capability\":\"...\",\"impact\":\"...\",\"point\":\"...\"}]}\n"
+                    "制約:\n"
+                    "- capability: 何ができるようになったか(最大80文字)\n"
+                    "- impact: 誰にどんな影響があるか(最大80文字)\n"
+                    "- point: 補足要点(最大100文字、任意)\n"
+                    "- URLは含めない\n"
+                    f"updates={json.dumps(input_items, ensure_ascii=False)}"
+                ),
+            },
+        ],
+    }
+
+    req = urllib.request.Request(
+        MODELS_ENDPOINT,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=50) as res:
+            body = res.read().decode("utf-8")
+    except (urllib.error.URLError, TimeoutError, ValueError):
+        return {}
+
+    try:
+        decoded = json.loads(body)
+        content = decoded["choices"][0]["message"]["content"]
+    except Exception:
+        return {}
+
+    data = extract_json_object(content)
+    if not data:
+        return {}
+
+    items = data.get("items", [])
+    if not isinstance(items, list):
+        return {}
+
+    result: dict[int, dict[str, str]] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        idx = item.get("index")
+        if not isinstance(idx, int):
+            continue
+        if idx < 0 or idx >= len(updates):
+            continue
+
+        capability = compact_text(str(item.get("capability", "")), max_len=90)
+        impact = compact_text(str(item.get("impact", "")), max_len=90)
+        point = compact_text(str(item.get("point", "")), max_len=110)
+
+        if not capability and not impact and not point:
+            continue
+
+        result[idx] = {
+            "capability": capability,
+            "impact": impact,
+            "point": point,
+        }
+
+    return result
+
+
 def summarize_detail_text(text: str, max_len: int = 120) -> str:
     if not text:
         return ""
@@ -265,7 +428,7 @@ def infer_capability(title: str, detail: str) -> str:
     return "新機能または改善が追加されました。"
 
 
-def format_update_lines(update: dict[str, str]) -> list[str]:
+def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | None = None) -> list[str]:
     title = update.get("title", "（タイトルなし）").strip()
     source = update.get("source", "").strip()
     detail = update.get("detail", "").strip()
@@ -275,10 +438,27 @@ def format_update_lines(update: dict[str, str]) -> list[str]:
         heading = f"- {title} ({source})"
 
     lines = [heading]
-    lines.append(f"  できるようになったこと: {infer_capability(title, detail)}")
+
+    ai_capability = ""
+    ai_impact = ""
+    ai_point = ""
+    if ai_insight:
+        ai_capability = compact_text(ai_insight.get("capability", ""), max_len=90)
+        ai_impact = compact_text(ai_insight.get("impact", ""), max_len=90)
+        ai_point = compact_text(ai_insight.get("point", ""), max_len=110)
+
+    if ai_capability:
+        lines.append(f"  できるようになったこと: {ai_capability}")
+    else:
+        lines.append(f"  できるようになったこと: {infer_capability(title, detail)}")
+
+    if ai_impact:
+        lines.append(f"  利用者への影響: {ai_impact}")
 
     summary = summarize_detail_text(detail)
-    if summary:
+    if ai_point:
+        lines.append(f"  変更の要点: {ai_point}")
+    elif summary:
         lines.append(f"  変更の要点: {summary}")
 
     return lines
@@ -289,8 +469,10 @@ def build_daily_change_lines(report: ReportSummary, max_items: int = 6) -> list[
         return ["- 本日の更新差分はありませんでした。"]
 
     lines: list[str] = []
-    for item in report.updates[:max_items]:
-        lines.extend(format_update_lines(item))
+    day_updates = report.updates[:max_items]
+    ai_insights = call_models_for_update_insights(day_updates)
+    for idx, item in enumerate(day_updates):
+        lines.extend(format_update_lines(item, ai_insight=ai_insights.get(idx)))
 
     if lines:
         return lines
@@ -345,10 +527,11 @@ def build_backfill_lines(reports: list[ReportSummary], max_items_per_day: int = 
 
         if report.updates:
             day_updates = report.updates[:max_items_per_day]
-            for update in day_updates:
-                formatted = format_update_lines(update)
-                for idx, line in enumerate(formatted):
-                    if idx == 0:
+            ai_insights = call_models_for_update_insights(day_updates)
+            for idx, update in enumerate(day_updates):
+                formatted = format_update_lines(update, ai_insight=ai_insights.get(idx))
+                for line_idx, line in enumerate(formatted):
+                    if line_idx == 0:
                         lines.append("  ・" + line[2:])
                     else:
                         lines.append("    " + line.strip())

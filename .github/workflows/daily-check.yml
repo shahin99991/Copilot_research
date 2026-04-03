@@ -36,6 +36,8 @@ jobs:
           git push
       - name: Build Teams payload (daily report)
         if: steps.check.outputs.has_report == 'true'
+        env:
+          GITHUB_MODELS_TOKEN: ${{ secrets.GITHUB_MODELS_TOKEN }}
         run: |
           latest_file=$(ls -1 docs/updates/*.md | sort | tail -n 1)
           python scripts/build_teams_payload.py daily \
