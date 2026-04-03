@@ -43,6 +43,7 @@ jobs:
           latest_file=$(ls -1 docs/updates/*.md | sort | tail -n 1)
           python scripts/build_teams_payload.py daily \
             --report-file "$latest_file" \
+            --require-ai \
             --output teams-payload.json
       - name: Notify Teams (daily report)
         if: steps.check.outputs.has_report == 'true'
