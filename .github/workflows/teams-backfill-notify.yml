@@ -26,37 +26,12 @@ jobs:
           FROM_DATE: ${{ github.event.inputs.from_date }}
           TO_DATE: ${{ github.event.inputs.to_date }}
         run: |
-          mapfile -t files < <(
-            ls -1 docs/updates/*.md | sort | awk -v from="$FROM_DATE" -v to="$TO_DATE" '
-              {
-                file=$0
-                n=$0
-                sub(/^.*\//, "", n)
-                sub(/\.md$/, "", n)
-                if (n >= from && n <= to) print file
-              }
-            '
-          )
-
-          if [[ ${#files[@]} -eq 0 ]]; then
-            SUMMARY_LINES="- 対象期間のレポートファイルは見つかりませんでした。"
-            REPORT_COUNT=0
-          else
-            SUMMARY_LINES=""
-            REPORT_COUNT=${#files[@]}
-            for f in "${files[@]}"; do
-              date_name=$(basename "$f" .md)
-              diff_count=$(grep -E "^- 差分件数:" "$f" | sed -E 's/^- 差分件数:[[:space:]]*//' || true)
-              if [[ -z "$diff_count" ]]; then
-                diff_count=$(grep -c "^- \*\*URL\*\*:" "$f" || true)
-              fi
-              report_url="https://github.com/${{ github.repository }}/blob/main/docs/updates/${date_name}.md"
-              SUMMARY_LINES+="- ${date_name}: 差分 ${diff_count} 件 (${report_url})"$'\n'
-            done
-          fi
-
-            SUMMARY_LINES="$SUMMARY_LINES" FROM_DATE="$FROM_DATE" TO_DATE="$TO_DATE" REPORT_COUNT="$REPORT_COUNT" \
-            python -c "import json, os; summary=(f'期間: {os.getenv(\"FROM_DATE\",\"\")} 〜 {os.getenv(\"TO_DATE\",\"\")}\\nレポート数: {os.getenv(\"REPORT_COUNT\",\"0\")}'); details=os.getenv('SUMMARY_LINES','').rstrip() or '- 対象期間のレポートファイルは見つかりませんでした。'; card={'$schema':'http://adaptivecards.io/schemas/adaptive-card.json','type':'AdaptiveCard','version':'1.4','body':[{'type':'TextBlock','size':'Medium','weight':'Bolder','text':'Copilot / VS Code 期間サマリー通知'},{'type':'TextBlock','wrap':True,'text':summary},{'type':'TextBlock','wrap':True,'text':'一覧:\\n'+details}]}; print(json.dumps(card, ensure_ascii=False))" > teams-backfill-payload.json
+          python scripts/build_teams_payload.py backfill \
+            --from-date "$FROM_DATE" \
+            --to-date "$TO_DATE" \
+            --updates-dir docs/updates \
+            --repo "${{ github.repository }}" \
+            --output teams-backfill-payload.json
 
       - name: Notify Teams
         env:
