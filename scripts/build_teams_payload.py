@@ -574,6 +574,7 @@ def retain_key_terms(text: str, title: str, detail: str) -> str:
 def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | None = None) -> list[str]:
     title = update.get("title", "（タイトルなし）").strip()
     source = update.get("source", "").strip()
+    source_url = update.get("url", "").strip()
     detail = update.get("detail", "").strip()
 
     ai_title = ""
@@ -588,6 +589,15 @@ def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | Non
         heading = f"・{heading_title} ({source})"
 
     lines = [heading]
+
+    if source_url:
+        if source:
+            source_label = source
+        elif "microsoft/vscode/releases" in source_url:
+            source_label = "VS Code Release"
+        else:
+            source_label = "Original Source"
+        lines.append(f"ソース元: [{source_label}]({source_url})")
 
     ai_capability = ""
     ai_impact = ""
@@ -744,7 +754,7 @@ def styled_text_block(line: str) -> dict[str, Any]:
         block["spacing"] = "Small"
         return block
 
-    for label in ("できるようになったこと", "利用者への影響", "変更の要点"):
+    for label in ("ソース元", "できるようになったこと", "利用者への影響", "変更の要点"):
         prefix = f"{label}:"
         if text.startswith(prefix):
             value = text.split(":", 1)[1].strip()
