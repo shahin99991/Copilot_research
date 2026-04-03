@@ -34,8 +34,8 @@ jobs:
           git add docs/ state/
           git diff --cached --quiet || git commit -m "chore: auto-update $(date -u +'%Y-%m-%d')"
           git push
-      - name: Build Teams payload (updates only)
-        if: steps.check.outputs.has_updates == 'true'
+      - name: Build Teams payload (daily report)
+        if: steps.check.outputs.has_report == 'true'
         run: |
           latest_file=$(ls -1 docs/updates/*.md | sort | tail -n 1)
           latest_name=$(basename "$latest_file")
@@ -46,29 +46,10 @@ jobs:
           report_url="https://github.com/${{ github.repository }}/blob/main/docs/updates/${latest_name}"
           update_titles=$(grep -E '^### ' "$latest_file" | sed -E 's/^### [^ ]+ //' || true)
 
-          UPDATE_TITLES="$update_titles" DIFF_COUNT="$diff_count" LATEST_NAME="$latest_name" REPORT_URL="$report_url" python - <<'PY' > teams-payload.json
-import json
-import os
-
-titles = [t.strip() for t in os.getenv("UPDATE_TITLES", "").splitlines() if t.strip()]
-if titles:
-    title_lines = "\n".join(f"- {t}" for t in titles[:8])
-else:
-    title_lines = "- (タイトル抽出なし)"
-
-text = (
-    "Copilot / VS Code 更新を検知しました\n"
-    f"- 差分件数: {os.getenv('DIFF_COUNT', 'unknown')}\n"
-    f"- レポート: {os.getenv('LATEST_NAME', '')}\n"
-    f"- URL: {os.getenv('REPORT_URL', '')}\n"
-    "主な更新:\n"
-    f"{title_lines}"
-)
-
-print(json.dumps({"text": text}, ensure_ascii=False))
-PY
-      - name: Notify Teams (updates only)
-        if: steps.check.outputs.has_updates == 'true'
+          UPDATE_TITLES="$update_titles" DIFF_COUNT="$diff_count" LATEST_NAME="$latest_name" REPORT_URL="$report_url" \
+          python -c "import json, os; diff=os.getenv('DIFF_COUNT','unknown').strip(); titles=[t.strip() for t in os.getenv('UPDATE_TITLES','').splitlines() if t.strip()]; title_lines='\\n'.join(f'- {t}' for t in titles[:8]) if titles else ('- 本日の更新差分はありませんでした。' if diff=='0' else '- (タイトル抽出なし)'); status='更新あり' if diff!='0' else '差分なし'; text=('Copilot / VS Code 定期チェック結果\\n' + f'- ステータス: {status}\\n' + f'- 差分件数: {diff}\\n' + f\"- レポート: {os.getenv('LATEST_NAME','')}\\n\" + f\"- URL: {os.getenv('REPORT_URL','')}\\n\" + '主な更新:\\n' + title_lines); print(json.dumps({'text': text}, ensure_ascii=False))" > teams-payload.json
+      - name: Notify Teams (daily report)
+        if: steps.check.outputs.has_report == 'true'
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
