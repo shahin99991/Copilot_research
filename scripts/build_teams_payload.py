@@ -267,7 +267,6 @@ def get_models_token() -> str:
     token = (
         os.getenv("GITHUB_MODELS_TOKEN", "").strip()
         or os.getenv("MODELS_TOKEN", "").strip()
-        or os.getenv("GITHUB_TOKEN", "").strip()
     )
     return token
 
