@@ -686,7 +686,6 @@ def list_reports_between(updates_dir: Path, from_date: str, to_date: str) -> lis
 
 def build_backfill_lines(
     reports: list[ReportSummary],
-    max_items_per_day: int = 3,
     *,
     require_ai: bool = False,
 ) -> list[str]:
@@ -700,7 +699,7 @@ def build_backfill_lines(
         lines.append(f"【{report.date_name}】差分 {report.diff_count} 件")
 
         if report.updates:
-            day_updates = report.updates[:max_items_per_day]
+            day_updates = report.updates
             ai_insights = call_models_for_update_insights(day_updates)
             if require_ai and len(ai_insights) < len(day_updates):
                 missing = [str(i + 1) for i in range(len(day_updates)) if i not in ai_insights]
@@ -711,10 +710,6 @@ def build_backfill_lines(
             for idx, update in enumerate(day_updates):
                 formatted = format_update_lines(update, ai_insight=ai_insights.get(idx))
                 lines.extend(formatted)
-
-            remaining = report.diff_count - len(day_updates)
-            if remaining > 0:
-                lines.append(f"・ほか {remaining} 件の更新があります。")
             continue
 
         ai_lines = normalize_bullets(report.ai_summary_lines, max_items=2)
