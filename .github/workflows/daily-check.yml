@@ -38,6 +38,7 @@ jobs:
         if: steps.check.outputs.has_report == 'true'
         env:
           GITHUB_MODELS_TOKEN: ${{ secrets.GITHUB_MODELS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           latest_file=$(ls -1 docs/updates/*.md | sort | tail -n 1)
           python scripts/build_teams_payload.py daily \
