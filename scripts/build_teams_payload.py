@@ -8,6 +8,7 @@ import html
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -222,6 +223,10 @@ def compact_text(text: str, max_len: int = 140) -> str:
     return value
 
 
+def has_japanese(text: str) -> bool:
+    return bool(re.search(r"[\u3040-\u30ff\u3400-\u9fff]", text or ""))
+
+
 def get_models_token() -> str:
     token = (
         os.getenv("GITHUB_MODELS_TOKEN", "").strip()
@@ -269,23 +274,80 @@ def extract_json_object(text: str) -> dict[str, Any] | None:
     return None
 
 
-def call_models_for_update_insights(updates: list[dict[str, str]]) -> dict[int, dict[str, str]]:
-    token = get_models_token()
-    if not token or not updates:
+def invoke_models(payload: dict[str, Any], token: str, timeout: int = 50) -> str | None:
+    req = urllib.request.Request(
+        MODELS_ENDPOINT,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as res:
+            body = res.read().decode("utf-8")
+    except (urllib.error.URLError, TimeoutError, ValueError):
+        return None
+
+    try:
+        decoded = json.loads(body)
+        return decoded["choices"][0]["message"]["content"]
+    except Exception:
+        return None
+
+
+def parse_insights_from_content(content: str, max_updates: int) -> dict[int, dict[str, str]]:
+    data = extract_json_object(content)
+    if not data:
         return {}
 
-    input_items = []
-    for idx, update in enumerate(updates):
-        input_items.append(
-            {
-                "index": idx,
-                "title": compact_text(update.get("title", ""), max_len=180),
-                "source": compact_text(update.get("source", ""), max_len=80),
-                "detail": compact_text(update.get("detail", ""), max_len=500),
-            }
-        )
+    items = data.get("items", [])
+    if not isinstance(items, list):
+        return {}
 
-    payload = {
+    result: dict[int, dict[str, str]] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        idx = item.get("index")
+        if not isinstance(idx, int):
+            continue
+        if idx < 0 or idx >= max_updates:
+            continue
+
+        title_ja = compact_text(str(item.get("title_ja", "")), max_len=60)
+        capability = compact_text(str(item.get("capability", "")), max_len=90)
+        impact = compact_text(str(item.get("impact", "")), max_len=90)
+        point = compact_text(str(item.get("point", "")), max_len=110)
+
+        if not title_ja and not capability and not impact and not point:
+            continue
+
+        # Keep Japanese readability in Teams even when model drifts.
+        if title_ja and not has_japanese(title_ja):
+            title_ja = ""
+        if capability and not has_japanese(capability):
+            capability = "新機能や改善を利用できるようになりました。"
+        if impact and not has_japanese(impact):
+            impact = "利用者の作業効率や使いやすさに良い影響があります。"
+        if point and not has_japanese(point):
+            point = ""
+
+        result[idx] = {
+            "title_ja": title_ja,
+            "capability": capability,
+            "impact": impact,
+            "point": point,
+        }
+
+    return result
+
+
+def build_insight_payload(input_items: list[dict[str, str]], single_mode: bool = False) -> dict[str, Any]:
+    scope = "1件" if single_mode else "複数件"
+    return {
         "model": os.getenv("GITHUB_MODELS_MODEL", MODELS_DEFAULT),
         "temperature": 0.2,
         "max_tokens": 1400,
@@ -302,13 +364,15 @@ def call_models_for_update_insights(updates: list[dict[str, str]]) -> dict[int, 
             {
                 "role": "user",
                 "content": (
-                    "次のupdates配列を読んで、各indexについて日本語の説明を作成してください。\n"
+                    f"次のupdates配列({scope})を読んで、各indexについて日本語の説明を作成してください。\n"
                     "出力形式は次のJSONだけにしてください:\n"
-                    "{\"items\":[{\"index\":0,\"capability\":\"...\",\"impact\":\"...\",\"point\":\"...\"}]}\n"
+                    "{\"items\":[{\"index\":0,\"title_ja\":\"...\",\"capability\":\"...\",\"impact\":\"...\",\"point\":\"...\"}]}\n"
                     "制約:\n"
+                    "- title_ja: 更新名の日本語見出し(最大50文字)\n"
                     "- capability: 何ができるようになったか(最大80文字)\n"
                     "- impact: 誰にどんな影響があるか(最大80文字)\n"
                     "- point: 補足要点(最大100文字、任意)\n"
+                    "- すべて日本語で出力\n"
                     "- URLは含めない\n"
                     f"updates={json.dumps(input_items, ensure_ascii=False)}"
                 ),
@@ -316,58 +380,66 @@ def call_models_for_update_insights(updates: list[dict[str, str]]) -> dict[int, 
         ],
     }
 
-    req = urllib.request.Request(
-        MODELS_ENDPOINT,
-        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
 
-    try:
-        with urllib.request.urlopen(req, timeout=50) as res:
-            body = res.read().decode("utf-8")
-    except (urllib.error.URLError, TimeoutError, ValueError):
+def call_models_for_update_insights(
+    updates: list[dict[str, str]],
+    *,
+    retries: int = 2,
+) -> dict[int, dict[str, str]]:
+    token = get_models_token()
+    if not token or not updates:
         return {}
 
-    try:
-        decoded = json.loads(body)
-        content = decoded["choices"][0]["message"]["content"]
-    except Exception:
-        return {}
-
-    data = extract_json_object(content)
-    if not data:
-        return {}
-
-    items = data.get("items", [])
-    if not isinstance(items, list):
-        return {}
+    input_items = []
+    for idx, update in enumerate(updates):
+        input_items.append(
+            {
+                "index": idx,
+                "title": compact_text(update.get("title", ""), max_len=180),
+                "source": compact_text(update.get("source", ""), max_len=80),
+                "detail": compact_text(update.get("detail", ""), max_len=500),
+            }
+        )
 
     result: dict[int, dict[str, str]] = {}
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        idx = item.get("index")
-        if not isinstance(idx, int):
-            continue
-        if idx < 0 or idx >= len(updates):
-            continue
 
-        capability = compact_text(str(item.get("capability", "")), max_len=90)
-        impact = compact_text(str(item.get("impact", "")), max_len=90)
-        point = compact_text(str(item.get("point", "")), max_len=110)
+    # Batch call first.
+    payload = build_insight_payload(input_items)
+    for attempt in range(retries + 1):
+        content = invoke_models(payload, token)
+        if content:
+            result.update(parse_insights_from_content(content, max_updates=len(updates)))
+        if len(result) == len(updates):
+            return result
+        if attempt < retries:
+            time.sleep(1.0 + attempt)
 
-        if not capability and not impact and not point:
-            continue
+    # Retry missing entries one by one to increase robustness.
+    missing = [idx for idx in range(len(updates)) if idx not in result]
+    for idx in missing:
+        single_item = [
+            {
+                "index": 0,
+                "title": compact_text(updates[idx].get("title", ""), max_len=180),
+                "source": compact_text(updates[idx].get("source", ""), max_len=80),
+                "detail": compact_text(updates[idx].get("detail", ""), max_len=500),
+            }
+        ]
+        single_payload = build_insight_payload(single_item, single_mode=True)
 
-        result[idx] = {
-            "capability": capability,
-            "impact": impact,
-            "point": point,
-        }
+        parsed_single: dict[str, str] | None = None
+        for attempt in range(retries + 1):
+            content = invoke_models(single_payload, token)
+            if content:
+                one = parse_insights_from_content(content, max_updates=1)
+                if 0 in one:
+                    parsed_single = one[0]
+                    break
+            if attempt < retries:
+                time.sleep(0.8 + attempt)
+
+        if parsed_single:
+            result[idx] = parsed_single
 
     return result
 
@@ -428,14 +500,35 @@ def infer_capability(title: str, detail: str) -> str:
     return "新機能または改善が追加されました。"
 
 
+def infer_impact(title: str, detail: str, source: str) -> str:
+    corpus = f"{title} {detail} {source}".lower()
+
+    if "student" in corpus or "education" in corpus:
+        return "学習ユーザーが新しいモデルや機能を使って学習を進めやすくなります。"
+    if "mobile" in corpus:
+        return "外出先でもエージェント運用や作業継続がしやすくなります。"
+    if "cloud agent" in corpus or "agent" in corpus:
+        return "実装作業の自動化範囲が広がり、開発スピード向上が見込めます。"
+    if "vscode" in corpus or "vs code" in corpus:
+        return "開発環境を最新化することで日常開発の安定性と効率が向上します。"
+    return "利用者の作業効率や使いやすさに良い影響があります。"
+
+
 def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | None = None) -> list[str]:
     title = update.get("title", "（タイトルなし）").strip()
     source = update.get("source", "").strip()
     detail = update.get("detail", "").strip()
 
-    heading = f"- {title}"
+    ai_title = ""
+    heading_title = title
+    if ai_insight:
+        ai_title = compact_text(ai_insight.get("title_ja", ""), max_len=60)
+        if ai_title and has_japanese(ai_title):
+            heading_title = ai_title
+
+    heading = f"- {heading_title}"
     if source:
-        heading = f"- {title} ({source})"
+        heading = f"- {heading_title} ({source})"
 
     lines = [heading]
 
@@ -454,23 +547,35 @@ def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | Non
 
     if ai_impact:
         lines.append(f"  利用者への影響: {ai_impact}")
+    else:
+        lines.append(f"  利用者への影響: {infer_impact(title, detail, source)}")
 
     summary = summarize_detail_text(detail)
     if ai_point:
         lines.append(f"  変更の要点: {ai_point}")
-    elif summary:
+    elif summary and ai_insight is None:
         lines.append(f"  変更の要点: {summary}")
 
     return lines
 
 
-def build_daily_change_lines(report: ReportSummary, max_items: int = 6) -> list[str]:
+def build_daily_change_lines(
+    report: ReportSummary,
+    max_items: int = 6,
+    *,
+    require_ai: bool = False,
+) -> list[str]:
     if report.diff_count == 0:
         return ["- 本日の更新差分はありませんでした。"]
 
     lines: list[str] = []
     day_updates = report.updates[:max_items]
     ai_insights = call_models_for_update_insights(day_updates)
+    if require_ai and len(ai_insights) < len(day_updates):
+        missing = [str(i + 1) for i in range(len(day_updates)) if i not in ai_insights]
+        raise RuntimeError(
+            "AI insight generation failed for update index: " + ",".join(missing)
+        )
     for idx, item in enumerate(day_updates):
         lines.extend(format_update_lines(item, ai_insight=ai_insights.get(idx)))
 
@@ -484,10 +589,10 @@ def build_daily_change_lines(report: ReportSummary, max_items: int = 6) -> list[
     return ["- 変更内容の抽出に失敗しました。次回の自動収集で再試行します。"]
 
 
-def build_daily_card(report: ReportSummary) -> dict:
+def build_daily_card(report: ReportSummary, *, require_ai: bool = False) -> dict:
     status = "更新あり" if report.diff_count > 0 else "差分なし"
     summary = f"ステータス: {status}\n差分件数: {report.diff_count}"
-    details = "\n".join(build_daily_change_lines(report))
+    details = "\n".join(build_daily_change_lines(report, require_ai=require_ai))
 
     return {
         "$schema": CARD_SCHEMA,
@@ -515,7 +620,12 @@ def list_reports_between(updates_dir: Path, from_date: str, to_date: str) -> lis
     return matched
 
 
-def build_backfill_lines(reports: list[ReportSummary], max_items_per_day: int = 3) -> list[str]:
+def build_backfill_lines(
+    reports: list[ReportSummary],
+    max_items_per_day: int = 3,
+    *,
+    require_ai: bool = False,
+) -> list[str]:
     lines: list[str] = []
 
     for report in reports:
@@ -528,6 +638,12 @@ def build_backfill_lines(reports: list[ReportSummary], max_items_per_day: int = 
         if report.updates:
             day_updates = report.updates[:max_items_per_day]
             ai_insights = call_models_for_update_insights(day_updates)
+            if require_ai and len(ai_insights) < len(day_updates):
+                missing = [str(i + 1) for i in range(len(day_updates)) if i not in ai_insights]
+                raise RuntimeError(
+                    f"AI insight generation failed for {report.date_name} update index: "
+                    + ",".join(missing)
+                )
             for idx, update in enumerate(day_updates):
                 formatted = format_update_lines(update, ai_insight=ai_insights.get(idx))
                 for line_idx, line in enumerate(formatted):
@@ -560,9 +676,11 @@ def build_backfill_card(
     reports: list[ReportSummary],
     from_date: str,
     to_date: str,
+    *,
+    require_ai: bool = False,
 ) -> dict:
     summary = f"期間: {from_date} 〜 {to_date}\n対象日数: {len(reports)}"
-    details = "\n".join(build_backfill_lines(reports))
+    details = "\n".join(build_backfill_lines(reports, require_ai=require_ai))
 
     return {
         "$schema": CARD_SCHEMA,
@@ -584,7 +702,7 @@ def build_backfill_card(
 def cmd_daily(args: argparse.Namespace) -> None:
     report_file = Path(args.report_file)
     report = read_report(report_file)
-    card = build_daily_card(report)
+    card = build_daily_card(report, require_ai=args.require_ai)
     Path(args.output).write_text(json.dumps(card, ensure_ascii=False), encoding="utf-8")
 
 
@@ -592,7 +710,7 @@ def cmd_backfill(args: argparse.Namespace) -> None:
     updates_dir = Path(args.updates_dir)
     files = list_reports_between(updates_dir, args.from_date, args.to_date)
     reports = [read_report(path) for path in files]
-    card = build_backfill_card(reports, args.from_date, args.to_date)
+    card = build_backfill_card(reports, args.from_date, args.to_date, require_ai=args.require_ai)
     Path(args.output).write_text(json.dumps(card, ensure_ascii=False), encoding="utf-8")
 
 
@@ -603,6 +721,11 @@ def build_parser() -> argparse.ArgumentParser:
     daily = sub.add_parser("daily", help="Build payload for daily report notification")
     daily.add_argument("--report-file", required=True, help="Path to daily report markdown")
     daily.add_argument("--output", required=True, help="Output JSON file path")
+    daily.add_argument(
+        "--require-ai",
+        action="store_true",
+        help="Fail if AI interpretation cannot be generated for updates.",
+    )
     daily.set_defaults(func=cmd_daily)
 
     backfill = sub.add_parser("backfill", help="Build payload for range summary notification")
@@ -614,6 +737,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Directory containing daily report markdown files",
     )
     backfill.add_argument("--output", required=True, help="Output JSON file path")
+    backfill.add_argument(
+        "--require-ai",
+        action="store_true",
+        help="Fail if AI interpretation cannot be generated for updates.",
+    )
     backfill.set_defaults(func=cmd_backfill)
 
     return parser
