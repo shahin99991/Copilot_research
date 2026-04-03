@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-GitHub Copilot / VS Code 更新チェッカー
+Microsoft AI / Copilot 更新チェッカー
 
 監視対象:
   - VS Code の最新リリース（GitHub API）
   - GitHub Copilot Changelog（RSS）
   - VS Code Blog（RSS、Copilot/AI関連のみ）
+    - Microsoft 365 Blog（RSS、Copilot/AI・アプリ更新）
+    - Power Platform Blog（RSS、Copilot Studio/AI関連）
+    - Microsoft Blogs（RSS、Copilot/AI関連）
 
 変更検知時: docs/updates/YYYY-MM-DD.md を生成して GitHub Actions でコミット
 """
@@ -20,10 +23,19 @@ from pathlib import Path
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 MODELS_TOKEN = os.environ.get("GITHUB_MODELS_TOKEN", "") or os.environ.get("MODELS_TOKEN", GITHUB_TOKEN)
+FEED_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
 
 GH_HEADERS = {
     "Authorization": f"Bearer {GITHUB_TOKEN}",
     "Accept": "application/vnd.github+json",
+}
+
+FEED_HEADERS = {
+    "User-Agent": FEED_USER_AGENT,
+    "Accept": "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
 }
 
 STATE_FILE = Path("state/last-seen.json")
@@ -43,6 +55,52 @@ FEEDS = [
         "url": "https://code.visualstudio.com/feed.xml",
         "name": "VS Code Blog",
         "filter_keywords": ["copilot", "agent", "ai", "model", "llm", "chat", "skill"],
+    },
+    {
+        "id": "microsoft_365_blog",
+        "url": "https://www.microsoft.com/en-us/microsoft-365/blog/feed/",
+        "name": "Microsoft 365 Blog",
+        "filter_keywords": [
+            "copilot",
+            "ai",
+            "agent",
+            "microsoft 365",
+            "word",
+            "excel",
+            "powerpoint",
+            "outlook",
+            "teams",
+            "onedrive",
+            "sharepoint",
+        ],
+    },
+    {
+        "id": "power_platform_blog",
+        "url": "https://www.microsoft.com/en-us/power-platform/blog/feed/",
+        "name": "Power Platform Blog",
+        "filter_keywords": [
+            "copilot studio",
+            "copilot",
+            "power platform",
+            "power apps",
+            "power automate",
+            "power bi",
+            "ai",
+            "agent",
+        ],
+    },
+    {
+        "id": "microsoft_blogs",
+        "url": "https://blogs.microsoft.com/feed/",
+        "name": "Microsoft Blogs",
+        "filter_keywords": [
+            "copilot",
+            "microsoft 365",
+            "copilot studio",
+            "power platform",
+            "ai",
+            "agent",
+        ],
     },
 ]
 
@@ -105,6 +163,7 @@ def check_vscode_release(state: dict) -> dict | None:
 
     return {
         "type": "vscode_release",
+        "stack": "VS Code",
         "title": f"VS Code {tag} リリース",
         "tag": tag,
         "url": data["html_url"],
@@ -113,15 +172,48 @@ def check_vscode_release(state: dict) -> dict | None:
     }
 
 
+def infer_stack(title: str, summary: str, feed_name: str, url: str) -> str:
+    text = f"{title} {summary} {feed_name} {url}".lower()
+
+    if "copilot studio" in text or "power virtual agents" in text:
+        return "Copilot Studio"
+    if "microsoft 365 copilot" in text or "copilot for microsoft 365" in text:
+        return "Microsoft 365 Copilot"
+    if any(k in text for k in ["word", "excel", "powerpoint", "outlook", "teams", "sharepoint", "onedrive"]):
+        return "Microsoft 365 Apps"
+    if any(k in text for k in ["power platform", "power apps", "power automate", "power bi", "dataverse"]):
+        return "Power Platform"
+    if "vscode" in text or "visual studio code" in text:
+        return "VS Code"
+    if "github copilot" in text or "copilot" in text:
+        return "Copilot"
+    return "Microsoft AI / Copilot"
+
+
+def fetch_feed(url: str) -> feedparser.FeedParserDict:
+    resp = requests.get(url, headers=FEED_HEADERS, timeout=30)
+    resp.raise_for_status()
+    return feedparser.parse(resp.text)
+
+
+def as_text(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    return str(value)
+
+
 def check_feeds(state: dict) -> list[dict]:
     """RSS フィードを確認して新着エントリを返す。"""
     new_entries = []
     feed_state = state.setdefault("feeds", {})
+    seen_links: set[str] = set()
 
     for feed_config in FEEDS:
         feed_id = feed_config["id"]
         try:
-            feed = feedparser.parse(feed_config["url"])
+            feed = fetch_feed(feed_config["url"])
         except Exception as e:
             print(f"[WARN] Feed parse error ({feed_id}): {e}", file=sys.stderr)
             continue
@@ -130,7 +222,10 @@ def check_feeds(state: dict) -> list[dict]:
         latest_id = None
 
         for entry in feed.entries[:15]:
-            entry_id = entry.get("id") or entry.get("link", "")
+            title = as_text(entry.get("title", ""))
+            summary_text = as_text(entry.get("summary", ""))
+            entry_link = as_text(entry.get("link", "")).strip()
+            entry_id = as_text(entry.get("id", "")) or entry_link
 
             if latest_id is None:
                 latest_id = entry_id  # 最新エントリのIDを記録
@@ -141,20 +236,29 @@ def check_feeds(state: dict) -> list[dict]:
             # キーワードフィルタ
             keywords = feed_config.get("filter_keywords", [])
             if keywords:
-                text = (
-                    entry.get("title", "") + " " + entry.get("summary", "")
-                ).lower()
+                text = f"{title} {summary_text}".lower()
                 if not any(k in text for k in keywords):
                     continue
 
+            if entry_link and entry_link in seen_links:
+                continue
+
             new_entries.append({
                 "type": "feed",
+                "stack": infer_stack(
+                    title,
+                    summary_text,
+                    feed_config["name"],
+                    entry_link,
+                ),
                 "feed_name": feed_config["name"],
-                "title": entry.get("title", "（タイトルなし）"),
-                "url": entry.get("link", ""),
-                "summary": (entry.get("summary") or "")[:800],
-                "published": entry.get("published", ""),
+                "title": title or "（タイトルなし）",
+                "url": entry_link,
+                "summary": summary_text[:800],
+                "published": as_text(entry.get("published", "")),
             })
+            if entry_link:
+                seen_links.add(entry_link)
 
         if latest_id:
             feed_state[feed_id] = latest_id
@@ -172,15 +276,15 @@ def generate_japanese_summary(updates: list[dict]) -> str | None:
         return None
 
     lines = [
-        "以下のGitHub CopilotおよびVS Codeの最新情報を、"
+        "以下のCopilot / VS Code / Microsoft 365 / Copilot Studio関連の最新情報を、"
         "日本語でエンジニア向けに要点を箇条書きでまとめてください。\n"
     ]
     for u in updates:
         if u["type"] == "vscode_release":
-            lines.append(f"## {u['title']}\nURL: {u['url']}\n{u['body'][:600]}\n")
+            lines.append(f"## [{u.get('stack','VS Code')}] {u['title']}\nURL: {u['url']}\n{u['body'][:600]}\n")
         else:
             lines.append(
-                f"## {u['title']}\nSource: {u['feed_name']}\n"
+                f"## [{u.get('stack','Microsoft AI / Copilot')}] {u['title']}\nSource: {u['feed_name']}\n"
                 f"URL: {u['url']}\n{u['summary'][:400]}\n"
             )
     lines.append("\n**日本語まとめ（箇条書き）:**")
@@ -231,7 +335,7 @@ def create_update_doc(updates: list[dict], summary: str | None) -> Path:
 
     diff_count = len(updates)
     lines = [
-        f"# GitHub Copilot / VS Code 更新情報 ({today})\n",
+        f"# Microsoft AI / Copilot 更新情報 ({today})\n",
         f"> 自動生成: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}\n",
         "",
         "## 📌 実行ステータス\n",
@@ -262,6 +366,7 @@ def create_update_doc(updates: list[dict], summary: str | None) -> Path:
         if u["type"] == "vscode_release":
             lines += [
                 f"### 🚀 {u['title']}",
+                f"- **スタック**: {u.get('stack', 'VS Code')}",
                 f"- **URL**: [{u['url']}]({u['url']})",
                 f"- **公開日**: {u['published_at']}",
                 f"- **リリースノート全文**: [docs/releases/{u['tag']}.md](../releases/{u['tag']}.md)",
@@ -276,6 +381,7 @@ def create_update_doc(updates: list[dict], summary: str | None) -> Path:
         else:
             lines += [
                 f"### 📰 {u['title']}",
+                f"- **スタック**: {u.get('stack', 'Microsoft AI / Copilot')}",
                 f"- **ソース**: {u['feed_name']}",
                 f"- **URL**: [{u['url']}]({u['url']})",
                 f"- **公開日**: {u['published']}",

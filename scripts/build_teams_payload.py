@@ -62,15 +62,33 @@ def parse_updates(lines: list[str]) -> list[dict[str, str]]:
     updates: list[dict[str, str]] = []
     current: dict[str, str] | None = None
     in_code_block = False
+    in_updates_section = False
 
     for raw_line in lines:
         line = raw_line.strip()
+
+        if line.startswith("## "):
+            if "検知した更新" in line:
+                in_updates_section = True
+                continue
+
+            if in_updates_section:
+                if current:
+                    updates.append(finalize_update(current))
+                    current = None
+                break
+
+            continue
+
+        if not in_updates_section:
+            continue
 
         if line.startswith("### "):
             if current:
                 updates.append(finalize_update(current))
             current = {
                 "title": clean_heading(line[4:].strip()),
+                "stack": "",
                 "source": "",
                 "url": "",
                 "detail": "",
@@ -86,6 +104,10 @@ def parse_updates(lines: list[str]) -> list[dict[str, str]]:
             continue
 
         if in_code_block:
+            continue
+
+        if line.startswith("- **スタック**:"):
+            current["stack"] = line.split(":", 1)[1].strip()
             continue
 
         if line.startswith("- **ソース**:"):
@@ -128,6 +150,7 @@ def finalize_update(update: dict[str, str]) -> dict[str, str]:
 
     return {
         "title": update.get("title", ""),
+        "stack": update.get("stack", ""),
         "source": update.get("source", ""),
         "url": update.get("url", ""),
         "detail": detail,
@@ -573,6 +596,7 @@ def retain_key_terms(text: str, title: str, detail: str) -> str:
 
 def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | None = None) -> list[str]:
     title = update.get("title", "（タイトルなし）").strip()
+    stack = update.get("stack", "").strip()
     source = update.get("source", "").strip()
     source_url = update.get("url", "").strip()
     detail = update.get("detail", "").strip()
@@ -589,6 +613,9 @@ def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | Non
         heading = f"・{heading_title} ({source})"
 
     lines = [heading]
+
+    if stack:
+        lines.append(f"スタック: {stack}")
 
     if source_url:
         if source:
@@ -754,7 +781,7 @@ def styled_text_block(line: str) -> dict[str, Any]:
         block["spacing"] = "Small"
         return block
 
-    for label in ("ソース元", "できるようになったこと", "利用者への影響", "変更の要点"):
+    for label in ("スタック", "ソース元", "できるようになったこと", "利用者への影響", "変更の要点"):
         prefix = f"{label}:"
         if text.startswith(prefix):
             value = text.split(":", 1)[1].strip()

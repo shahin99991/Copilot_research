@@ -1,4 +1,4 @@
-name: Daily Copilot & VS Code Update Check
+name: Daily Microsoft AI / Copilot Update Check
 
 on:
   schedule:
