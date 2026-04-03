@@ -1,7 +1,7 @@
 {
   "vscode_release": "1.114.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-03-31-research-plan-and-code-with-copilot-cloud-agent",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-04-02-copilot-sdk-in-public-preview",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_114"
   }
 }
