@@ -34,3 +34,46 @@ jobs:
           git add docs/ state/
           git diff --cached --quiet || git commit -m "chore: auto-update $(date -u +'%Y-%m-%d')"
           git push
+      - name: Build Teams payload (updates only)
+        if: steps.check.outputs.has_updates == 'true'
+        run: |
+          latest_file=$(ls -1 docs/updates/*.md | sort | tail -n 1)
+          latest_name=$(basename "$latest_file")
+          diff_count=$(grep -E "^- 差分件数:" "$latest_file" | sed -E 's/^- 差分件数:[[:space:]]*//' || true)
+          if [[ -z "$diff_count" ]]; then
+            diff_count=$(grep -c "^- \*\*URL\*\*:" "$latest_file" || true)
+          fi
+          report_url="https://github.com/${{ github.repository }}/blob/main/docs/updates/${latest_name}"
+          update_titles=$(grep -E '^### ' "$latest_file" | sed -E 's/^### [^ ]+ //' || true)
+
+          UPDATE_TITLES="$update_titles" DIFF_COUNT="$diff_count" LATEST_NAME="$latest_name" REPORT_URL="$report_url" python - <<'PY' > teams-payload.json
+import json
+import os
+
+titles = [t.strip() for t in os.getenv("UPDATE_TITLES", "").splitlines() if t.strip()]
+if titles:
+    title_lines = "\n".join(f"- {t}" for t in titles[:8])
+else:
+    title_lines = "- (タイトル抽出なし)"
+
+text = (
+    "Copilot / VS Code 更新を検知しました\n"
+    f"- 差分件数: {os.getenv('DIFF_COUNT', 'unknown')}\n"
+    f"- レポート: {os.getenv('LATEST_NAME', '')}\n"
+    f"- URL: {os.getenv('REPORT_URL', '')}\n"
+    "主な更新:\n"
+    f"{title_lines}"
+)
+
+print(json.dumps({"text": text}, ensure_ascii=False))
+PY
+      - name: Notify Teams (updates only)
+        if: steps.check.outputs.has_updates == 'true'
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          if [[ -z "${TEAMS_WEBHOOK_URL:-}" ]]; then
+            echo "TEAMS_WEBHOOK_URL is not set. Skip Teams notification."
+            exit 0
+          fi
+          curl -sS -X POST -H "Content-Type: application/json" --data @teams-payload.json "$TEAMS_WEBHOOK_URL"
