@@ -361,16 +361,6 @@ def parse_insights_from_content(content: str, max_updates: int) -> dict[int, dic
         if not title_ja and not capability and not impact and not point:
             continue
 
-        # Keep Japanese readability in Teams even when model drifts.
-        if title_ja and not has_japanese(title_ja):
-            title_ja = ""
-        if capability and not has_japanese(capability):
-            capability = "新機能や改善を利用できるようになりました。"
-        if impact and not has_japanese(impact):
-            impact = "利用者の作業効率や使いやすさに良い影響があります。"
-        if point and not has_japanese(point):
-            point = ""
-
         result[idx] = {
             "title_ja": title_ja,
             "capability": capability,
@@ -426,6 +416,8 @@ def call_models_for_update_insights(
 ) -> dict[int, dict[str, str]]:
     token = get_models_token()
     if not token or not updates:
+        if not token and updates:
+            print("[INFO] AI insights skipped: no model token.")
         return {}
 
     input_items = []
@@ -479,6 +471,7 @@ def call_models_for_update_insights(
         if parsed_single:
             result[idx] = parsed_single
 
+    print(f"[INFO] AI insights coverage: {len(result)}/{len(updates)}")
     return result
 
 
@@ -526,6 +519,9 @@ def infer_title_ja(title: str, detail: str) -> str:
         "release" in corpus or "リリース" in corpus
     ):
         return "VS Code 新バージョン公開"
+    fallback = compact_text(title, max_len=60)
+    if fallback:
+        return fallback
     return "主要な機能更新"
 
 
@@ -554,6 +550,9 @@ def infer_capability(title: str, detail: str) -> str:
     if "faster" in corpus or "improved" in corpus or "refresh" in corpus:
         return "操作性や処理速度が改善されました。"
     if detail:
+        summary = summarize_detail_text(detail, max_len=100)
+        if summary:
+            return summary
         return "機能改善が公開されました。"
     return "新機能または改善が追加されました。"
 
@@ -605,7 +604,7 @@ def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | Non
     heading_title = infer_title_ja(title, detail)
     if ai_insight:
         ai_title = compact_text(ai_insight.get("title_ja", ""), max_len=60)
-        if ai_title and has_japanese(ai_title):
+        if ai_title:
             heading_title = ai_title
 
     heading = f"・{heading_title}"
@@ -650,7 +649,7 @@ def format_update_lines(update: dict[str, str], ai_insight: dict[str, str] | Non
     summary = summarize_detail_text(detail)
     if ai_point:
         lines.append(f"変更の要点: {ai_point}")
-    elif summary and ai_insight is None and has_japanese(summary):
+    elif summary:
         lines.append(f"変更の要点: {summary}")
 
     return lines
@@ -696,7 +695,7 @@ def build_daily_card(report: ReportSummary, *, require_ai: bool = False) -> dict
             "type": "TextBlock",
             "size": "Medium",
             "weight": "Bolder",
-            "text": "Copilot / VS Code 定期チェック結果",
+            "text": "Microsoft AI / Copilot 定期チェック結果",
         },
         {"type": "TextBlock", "wrap": True, "text": summary},
         {"type": "TextBlock", "weight": "Bolder", "text": "変更内容"},
@@ -807,7 +806,7 @@ def build_backfill_card(
             "type": "TextBlock",
             "size": "Medium",
             "weight": "Bolder",
-            "text": "Copilot / VS Code 期間サマリー通知",
+            "text": "Microsoft AI / Copilot 期間サマリー通知",
         },
         {"type": "TextBlock", "wrap": True, "text": summary},
         {"type": "TextBlock", "weight": "Bolder", "text": "変更内容"},
