@@ -1,10 +1,10 @@
 {
   "vscode_release": "1.114.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-04-03-organization-runner-controls-for-copilot-cloud-agent",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-04-06-copilot-usage-metrics-now-identify-active-and-passive-copilot-code-review-users",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_115",
-    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=280887",
-    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=133636",
+    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281012",
+    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=133678",
     "microsoft_blogs": "https://blogs.microsoft.com/?p=52562872"
   }
 }
