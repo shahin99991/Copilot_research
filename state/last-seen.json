@@ -2,9 +2,9 @@
   "vscode_release": "1.115.0",
   "feeds": {
     "github_copilot_changelog": "https://github.blog/changelog/2026-04-08-copilot-reviewed-pull-request-merge-metrics-now-in-the-usage-metrics-api",
-    "vscode_blog": "https://code.visualstudio.com/updates/v1_115",
+    "vscode_blog": "https://code.visualstudio.com/updates/v1_116",
     "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281055",
-    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=133678",
+    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=133677",
     "microsoft_blogs": "https://blogs.microsoft.com/?p=52562872"
   }
 }
