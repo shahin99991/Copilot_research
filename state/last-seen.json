@@ -1,7 +1,7 @@
 {
-  "vscode_release": "1.115.0",
+  "vscode_release": "1.116.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-04-14-model-selection-for-claude-and-codex-agents-on-github-com",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-04-15-enable-copilot-cloud-agent-via-custom-properties",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_116",
     "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281055",
     "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=133775",
