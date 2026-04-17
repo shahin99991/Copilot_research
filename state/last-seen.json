@@ -1,8 +1,8 @@
 {
-  "vscode_release": "1.116.0",
+  "vscode_release": "v0.44.1",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-04-15-enable-copilot-cloud-agent-via-custom-properties",
-    "vscode_blog": "https://code.visualstudio.com/updates/v1_116",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-04-16-manage-agent-skills-with-github-cli",
+    "vscode_blog": "https://code.visualstudio.com/updates/v1_117",
     "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281055",
     "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=133775",
     "microsoft_blogs": "https://blogs.microsoft.com/?p=52562872"
