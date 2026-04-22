@@ -3,8 +3,8 @@
   "feeds": {
     "github_copilot_changelog": "https://github.blog/changelog/2026-04-20-changes-to-github-copilot-plans-for-individuals",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_117",
-    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281068",
-    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=133775",
-    "microsoft_blogs": "https://blogs.microsoft.com/?p=52562872"
+    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281055",
+    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/2026/04/15/making-business-apps-smarter-with-ai-copilot-and-agents-in-power-apps/",
+    "microsoft_blogs": "https://blogs.microsoft.com/?p=52562799"
   }
 }
