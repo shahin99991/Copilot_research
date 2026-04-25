@@ -102,3 +102,6 @@ VS Code タスクを使わずに確認する場合は、ワークスペース直
 cd /home/shahin/quita-agent
 ./daily-check-local.sh
 ```
+
+ghp_
+AMgS7pOAmN5LzeVlHlNSdqvD3rVclz47yHSF
