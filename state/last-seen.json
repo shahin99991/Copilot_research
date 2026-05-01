@@ -1,8 +1,8 @@
 {
-  "vscode_release": "1.118.0",
+  "vscode_release": "1.118.1",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-04-23-copilot-student-gpt-5-3-codex-removal-from-model-picker",
-    "vscode_blog": "https://code.visualstudio.com/updates/v1_118",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-04-28-github-copilot-in-visual-studio-april-update",
+    "vscode_blog": "https://code.visualstudio.com/updates/v1_119",
     "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281150",
     "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134095",
     "microsoft_blogs": "https://blogs.microsoft.com/?p=52562885"
