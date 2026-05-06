@@ -3,8 +3,8 @@
   "feeds": {
     "github_copilot_changelog": "https://github.blog/changelog/2026-05-01-upcoming-deprecation-of-gpt-5-2-and-gpt-5-2-codex",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_119",
-    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281150",
-    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134117",
-    "microsoft_blogs": "https://blogs.microsoft.com/?p=52562885"
+    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281245",
+    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=133915",
+    "microsoft_blogs": "https://blogs.microsoft.com/?p=52562896"
   }
 }
