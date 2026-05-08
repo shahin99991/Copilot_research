@@ -1,10 +1,10 @@
 {
   "vscode_release": "1.119.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-05-06-enterprise-managed-plugins-in-github-copilot-cli-are-now-in-public-preview",
-    "vscode_blog": "https://code.visualstudio.com/updates/v1_119",
-    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281150",
-    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134095",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-05-07-upcoming-deprecation-of-gpt-4-1",
+    "vscode_blog": "https://code.visualstudio.com/updates/v1_120",
+    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281068",
+    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=133915",
     "microsoft_blogs": "https://blogs.microsoft.com/?p=52562896"
   }
 }
