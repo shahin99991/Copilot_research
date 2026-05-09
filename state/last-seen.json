@@ -1,10 +1,10 @@
 {
   "vscode_release": "1.119.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-05-07-upcoming-deprecation-of-gpt-4-1",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-05-08-upcoming-deprecation-of-grok-code-fast-1",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_120",
     "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281068",
-    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=133915",
+    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134152",
     "microsoft_blogs": "https://blogs.microsoft.com/?p=52562896"
   }
 }
