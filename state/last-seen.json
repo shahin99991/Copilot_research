@@ -1,7 +1,7 @@
 {
-  "vscode_release": "1.119.1",
+  "vscode_release": "1.120.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-05-12-copilot-code-review-comment-experience-improvements",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-05-07-start-copilot-cloud-agent-tasks-via-the-rest-api",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_120",
     "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281273",
     "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134152",
