@@ -1,7 +1,7 @@
 {
   "vscode_release": "1.121.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-05-19-github-copilot-for-eclipse-is-open-source",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-05-26-copilot-memory-has-more-controls-for-deletion-scope-and-the-copilot-cli",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_122",
     "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281344",
     "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134114",
