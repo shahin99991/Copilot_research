@@ -1,10 +1,10 @@
 {
   "vscode_release": "1.122.1",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-06-01-evaluation-models-in-auto-for-individual-plans",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-06-02-gpt-4-1-deprecated",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_123",
-    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281344",
+    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281500",
     "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134114",
-    "microsoft_blogs": "https://blogs.microsoft.com/?p=52562949"
+    "microsoft_blogs": "https://blogs.microsoft.com/?p=52562973"
   }
 }
