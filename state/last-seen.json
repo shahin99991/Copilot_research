@@ -3,8 +3,8 @@
   "feeds": {
     "github_copilot_changelog": "https://github.blog/changelog/2026-06-05-gpt-5-2-and-gpt-5-2-codex-deprecated",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_124",
-    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281500",
-    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134264",
+    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/2026/06/02/introducing-microsoft-scout-your-always-on-personal-agent/",
+    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134378",
     "microsoft_blogs": "https://blogs.microsoft.com/?p=52562973"
   }
 }
