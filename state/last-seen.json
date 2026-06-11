@@ -1,9 +1,9 @@
 {
-  "vscode_release": "1.123.0",
+  "vscode_release": "1.124.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-06-09-auto-draft",
-    "vscode_blog": "https://code.visualstudio.com/updates/v1_124",
-    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281500",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-06-10-copilot-chat-now-sees-your-agent-sessions",
+    "vscode_blog": "https://code.visualstudio.com/updates/v1_125",
+    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/2026/06/02/introducing-microsoft-scout-your-always-on-personal-agent/",
     "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134378",
     "microsoft_blogs": "https://blogs.microsoft.com/?p=52562973"
   }
