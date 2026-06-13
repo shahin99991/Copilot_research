@@ -1,10 +1,10 @@
 {
-  "vscode_release": "1.124.0",
+  "vscode_release": "1.124.2",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-06-11-copilot-cli-configure-everything-from-one-place-with-settings",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-06-12-copilot-code-review-new-configurations-and-controls",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_125",
     "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281500",
-    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134378",
+    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134443",
     "microsoft_blogs": "https://blogs.microsoft.com/?p=52562973"
   }
 }
