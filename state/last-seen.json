@@ -1,9 +1,9 @@
 {
   "vscode_release": "1.125.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-06-17-enterprise-managed-settings-now-support-bypass-permission-controls",
-    "vscode_blog": "https://code.visualstudio.com/updates/v1_125",
-    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281500",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-06-18-upcoming-deprecation-of-opus-4-6-fast",
+    "vscode_blog": "https://code.visualstudio.com/updates/v1_126",
+    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281713",
     "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134304",
     "microsoft_blogs": "https://blogs.microsoft.com/?p=52562998"
   }
