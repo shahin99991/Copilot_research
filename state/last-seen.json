@@ -1,10 +1,10 @@
 {
   "vscode_release": "1.127.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-07-01-enterprises-can-default-to-auto-model-selection",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-07-02-improved-accuracy-and-coverage-in-copilot-usage-metrics-reports",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_127",
-    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/2026/06/16/copilot-cowork-is-now-generally-available/",
+    "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281823",
     "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134304",
-    "microsoft_blogs": "https://blogs.microsoft.com/?p=52563006"
+    "microsoft_blogs": "https://blogs.microsoft.com/?p=52563052"
   }
 }
