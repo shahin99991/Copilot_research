@@ -1,10 +1,10 @@
 {
   "vscode_release": "1.127.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-07-02-improved-accuracy-and-coverage-in-copilot-usage-metrics-reports",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-07-07-kimi-k2-7-now-available-for-copilot-business-and-enterprise",
     "vscode_blog": "https://code.visualstudio.com/blogs/2026/07/06/optimizing-vscode-coding-harness-model-providers",
     "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281823",
-    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134304",
+    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134642",
     "microsoft_blogs": "https://blogs.microsoft.com/?p=52563068"
   }
 }
