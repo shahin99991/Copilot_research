@@ -1,10 +1,10 @@
 {
-  "vscode_release": "1.129.1",
+  "vscode_release": "1.130.0",
   "feeds": {
-    "github_copilot_changelog": "https://github.blog/changelog/2026-07-21-gemini-3-6-flash-is-now-available-in-github-copilot",
+    "github_copilot_changelog": "https://github.blog/changelog/2026-07-21-new-copilot-usage-metrics-impact-dashboard",
     "vscode_blog": "https://code.visualstudio.com/updates/v1_130",
     "microsoft_365_blog": "https://www.microsoft.com/en-us/microsoft-365/blog/?p=281823",
-    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134650",
-    "microsoft_blogs": "https://blogs.microsoft.com/?p=52562996"
+    "power_platform_blog": "https://www.microsoft.com/en-us/power-platform/blog/?p=134677",
+    "microsoft_blogs": "https://blogs.microsoft.com/?p=52563059"
   }
 }
